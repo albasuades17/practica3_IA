@@ -168,6 +168,7 @@ class Board():
 
             mypiece = mypieces[j]
             listOtherPieces = mypieces.copy()
+
             listOtherPieces.remove(mypiece)
 
             listPotentialNextStates = []
@@ -182,12 +183,12 @@ class Board():
                                            [mypiece[0], mypiece[1] + 1, 6], [mypiece[0] + 1, mypiece[1] + 1, 6]]
                 # check they are empty
                 for k in range(len(listPotentialNextStates)):
-
                     aa = listPotentialNextStates[k]
                     if aa[0] > -1 and aa[0] < 8 and aa[1] > -1 and aa[1] < 8 and listPotentialNextStates[
-                        k] not in listOtherPieces and listPotentialNextStates[k] not in self.currentStateB:
+                        k] not in listOtherPieces:
+                        #and listPotentialNextStates[k] not in self.currentStateB:
 
-                        if self.board[aa[0]][aa[1]] == None:
+                        if self.board[aa[0]][aa[1]] == None or not self.board[aa[0]][aa[1]].color:
                             self.listSuccessorStates.append([aa[0], aa[1], aa[2]])
 
 
@@ -517,15 +518,16 @@ class Board():
 
             mypiece = mypieces[j]
             listOtherPieces = mypieces.copy()
+
             listOtherPieces.remove(mypiece)
 
             listPotentialNextStates = []
 
-            print(str(self.board[mypiece[0]][mypiece[1]]))
+            #print(str(self.board[mypiece[0]][mypiece[1]]))
 
-            if (str(self.board[mypiece[0]][mypiece[1]]) == 'K'):
+            if (self.board[mypiece[0]][mypiece[1]].name == 'K'):
 
-                #      print(" mypiece at  ",mypiece[0],mypiece[1])
+                #print(" mypiece at  ",mypiece[0],mypiece[1])
                 listPotentialNextStates = [[mypiece[0] + 1, mypiece[1], 12], \
                                            [mypiece[0] + 1, mypiece[1] - 1, 12], [mypiece[0], mypiece[1] - 1, 12], \
                                            [mypiece[0] - 1, mypiece[1] - 1, 12], \
@@ -536,16 +538,16 @@ class Board():
 
                     aa = listPotentialNextStates[k]
                     if aa[0] > -1 and aa[0] < 8 and aa[1] > -1 and aa[1] < 8 and listPotentialNextStates[
-                        k] not in listOtherPieces and listPotentialNextStates[k] not in self.currentStateW:
+                        k] not in listOtherPieces:
+                        #listPotentialNextStates[k] not in self.currentStateW:
 
-                        if self.board[aa[0]][aa[1]] == None:
+                        if self.board[aa[0]][aa[1]] == None or self.board[aa[0]][aa[1]].color:
                             self.listSuccessorStates.append([aa[0], aa[1], aa[2]])
-                print(self.listSuccessorStates)
 
-            elif (str(self.board[mypiece[0]][mypiece[1]]) == 'P'):
 
-                #       print(" mypiece at  ",mypiece[0],mypiece[1])
-                listPotentialNextStates = [[mypiece[0], mypiece[1], 1], [mypiece[0] + 1, mypiece[1], 1]]
+            elif (self.board[mypiece[0]][mypiece[1]].name == 'P'):
+
+                listPotentialNextStates = [[mypiece[0], mypiece[1], 7], [mypiece[0] + 1, mypiece[1], 7]]
                 # check they are empty
                 for k in range(len(listPotentialNextStates)):
 
@@ -557,7 +559,7 @@ class Board():
                             self.listSuccessorStates.append([aa[0], aa[1], aa[2]])
 
 
-            elif (str(self.board[mypiece[0]][mypiece[1]]) == 'R'):
+            elif (self.board[mypiece[0]][mypiece[1]].name == 'R'):
 
                 #         print(" mypiece at  ",mypiece[0],mypiece[1])
                 listPotentialNextStates = []
@@ -568,7 +570,8 @@ class Board():
                 while (ix > 0):
                     ix = ix - 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 8])
+                        if self.board[ix][iy].color:
+                            listPotentialNextStates.append([ix, iy, 8])
                         break
 
                     elif self.board[ix][iy] == None:
@@ -579,7 +582,8 @@ class Board():
                 while (ix < 7):
                     ix = ix + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 8])
+                        if self.board[ix][iy].color:
+                            listPotentialNextStates.append([ix, iy, 8])
                         break
 
                     elif self.board[ix][iy] == None:
@@ -590,7 +594,8 @@ class Board():
                 while (iy > 0):
                     iy = iy - 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 8])
+                        if self.board[ix][iy].color:
+                            listPotentialNextStates.append([ix, iy, 8])
                         break
 
                     elif self.board[ix][iy] == None:
@@ -601,7 +606,8 @@ class Board():
                 while (iy < 7):
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 8])
+                        if self.board[ix][iy].color:
+                            listPotentialNextStates.append([ix, iy, 8])
                         break
 
                     elif self.board[ix][iy] == None:
@@ -612,10 +618,12 @@ class Board():
                 for k in range(len(listPotentialNextStates)):
 
                     pos = listPotentialNextStates[k].copy()
-                    pos[2] = 12
+                    pos[2] = 6
                     overlapping = False
-                    if pos in self.currentStateB:
+                    """
+                    if pos in self.currentStateW:
                         overlapping = True
+                    """
 
                     if listPotentialNextStates[k] not in listOtherPieces and listPotentialNextStates[
                         k] and not overlapping:
@@ -625,7 +633,7 @@ class Board():
 
 
 
-            elif (str(self.board[mypiece[0]][mypiece[1]]) == 'H'):
+            elif (self.board[mypiece[0]][mypiece[1]].name == 'H'):
 
                 #         print(" mypiece at  ",mypiece[0]," ",mypiece[1]," ",3)
                 listPotentialNextStates = []
@@ -633,32 +641,32 @@ class Board():
                 ix = mypiece[0]
                 iy = mypiece[1]
 
-                nextS = [ix + 1, iy + 2, 3]
+                nextS = [ix + 1, iy + 2, 9]
                 if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
                     self.listPotentialNextStates.append(nextS)
-                nextS = [ix + 2, iy + 1, 3]
-                if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
-                    self.listPotentialNextStates.append(nextS)
-
-                nextS = [ix + 1, iy - 2, 3]
-                if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
-                    self.listPotentialNextStates.append(nextS)
-                nextS = [ix + 2, iy - 1, 3]
+                nextS = [ix + 2, iy + 1, 9]
                 if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
                     self.listPotentialNextStates.append(nextS)
 
-                nextS = [ix - 2, iy - 1, 3]
+                nextS = [ix + 1, iy - 2, 9]
                 if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
                     self.listPotentialNextStates.append(nextS)
-                nextS = [ix - 1, iy - 2, 3]
-                if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
-                    self.listPotentialNextStates.append(nextS)
-
-                nextS = [ix - 1, iy + 2, 3]
+                nextS = [ix + 2, iy - 1, 9]
                 if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
                     self.listPotentialNextStates.append(nextS)
 
-                nextS = [ix - 2, iy + 1, 3]
+                nextS = [ix - 2, iy - 1, 9]
+                if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
+                    self.listPotentialNextStates.append(nextS)
+                nextS = [ix - 1, iy - 2, 9]
+                if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
+                    self.listPotentialNextStates.append(nextS)
+
+                nextS = [ix - 1, iy + 2, 9]
+                if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
+                    self.listPotentialNextStates.append(nextS)
+
+                nextS = [ix - 2, iy + 1, 9]
                 if nextS[0] > -1 and nextS[0] < 8 and nextS[1] > -1 and nextS[1] < 8:
                     self.listPotentialNextStates.append(nextS)
 
@@ -670,7 +678,7 @@ class Board():
 
 
 
-            elif (str(self.board[mypiece[0]][mypiece[1]]) == 'B'):
+            elif (self.board[mypiece[0]][mypiece[1]].name == 'B'):
 
                 #         print(" mypiece at  ",mypiece[0],mypiece[1], 4)
                 listPotentialNextStates = []
@@ -682,11 +690,11 @@ class Board():
                     ix = ix - 1
                     iy = iy - 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
@@ -694,11 +702,11 @@ class Board():
                     ix = ix + 1
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
@@ -706,11 +714,11 @@ class Board():
                     ix = ix - 1
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
@@ -718,15 +726,15 @@ class Board():
                     ix = ix + 1
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 4])
+                        listPotentialNextStates.append([ix, iy, 10])
 
                 self.listSuccessorStates = listPotentialNextStates
 
-            elif (str(self.board[mypiece[0]][mypiece[1]]) == 'Q'):
+            elif (self.board[mypiece[0]][mypiece[1]].name == 'Q'):
 
                 #       print(" mypiece at  ",mypiece[0],mypiece[1])
                 listPotentialNextStates = []
@@ -740,11 +748,11 @@ class Board():
                     iy = iy - 1
 
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
@@ -752,11 +760,11 @@ class Board():
                     ix = ix + 1
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
@@ -764,11 +772,11 @@ class Board():
                     ix = ix - 1
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
@@ -776,11 +784,11 @@ class Board():
                     ix = ix + 1
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                         # Rook-like
                 ix = mypiece[0]
@@ -789,44 +797,44 @@ class Board():
                 while (ix > 0):
                     ix = ix - 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
                 while (ix < 7):
                     ix = ix + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
                 while (iy > 0):
                     iy = iy - 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                 ix = mypiece[0]
                 iy = mypiece[1]
                 while (iy < 7):
                     iy = iy + 1
                     if self.board[ix][iy] != None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
                         break
 
                     elif self.board[ix][iy] == None:
-                        listPotentialNextStates.append([ix, iy, 5])
+                        listPotentialNextStates.append([ix, iy, 11])
 
                         # check positions are not occupied
                 for k in range(len(listPotentialNextStates)):

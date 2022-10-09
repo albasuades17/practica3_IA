@@ -8,6 +8,7 @@ Created on Thu Sep  8 11:22:03 2022
 import copy
 
 import chess
+import board
 import numpy as np
 import sys
 import queue
@@ -67,6 +68,7 @@ class Aichess():
 
         return self.listNextStates
 
+
     def isSameState(self, a, b):
 
         isSameState1 = True
@@ -103,27 +105,124 @@ class Aichess():
         else:
             return False
 
-    def isCheckMateBlack(self, whiteState, blackState):
-        bkState = self.getPieceState(blackState, 12)
+    def isWatchedBk(self, bkPosition):
+        whiteState = self.chess.boardSim.currentStateW.copy()
         wkState = self.getPieceState(whiteState, 6)
         wrState = self.getPieceState(whiteState, 2)
+
+        #Si les negres maten el rei blanc, no és una configuració correcta
+        if wkState == None:
+            return False
+        #Mirem les possibles posicions del rei blanc i mirem si en alguna pot "matar" al rei negre
+        for wkPosition in self.getNextPositions(wkState):
+            if bkPosition  == wkPosition:
+                #Tindríem un checkMate
+                return True
+        if wrState != None:
+            # Mirem les possibles posicions de la torre blanca i mirem si en alguna pot "matar" al rei negre
+            for wrPosition in self.getNextPositions(wrState):
+                if bkPosition == wrPosition:
+                    return True
+
+        return False
+
+
+
+
+    def isBlackInCheckMate(self, whiteState, blackState):
+        #En aquest mètode mirem si el rei negre està amenaçat per les peces blanques
+        #Agafem l'estat del rei negre
+        bkState = self.getPieceState(blackState, 12)
         checkMate = False
-        #Rei negre es troba a una paret
+        #Rei negre es troba a una paret, llavors es pot donar un checkMate
         if bkState[0] == 0 or bkState[0] == 7 or bkState[1] == 0 or bkState[1] == 7:
-            #El mètode ens retorna llista de [fila,columna]
-            nextBkStates = self.getNextPositions(bkState)
-            nextWkStates = self.getNextPositions(wkState)
-            nextWrStates = self.getNextPositions(wrState)
-            print("BK positions: ", nextBkStates)
-            print("WK positions: ", nextWkStates)
-            print("WR positions: ", nextWrStates)
+            #Obtenim l'estat de les nostres peces blanques
+            wkState = self.getPieceState(whiteState, 6)
+            wrState = self.getPieceState(whiteState, 2)
             checkMate = True
-            for state in nextBkStates:
-                if state not in nextWkStates and state not in nextWrStates:
+            #Obtenim els estats futur de les peces negres
+            nextBStates = self.getListNextStatesB(blackState)
+
+            for state in nextBStates:
+                listStates = [wrState,wkState]
+                bkState = self.getPieceState(state, 12)
+                listStates.append(bkState)
+                brState = self.getPieceState(state, 8)
+                listStates.append(brState)
+                # Movem les peces negres al nou state
+                self.newBoardSim(listStates)
+                self.chess.boardSim.print_board()
+
+                #Comprovem si en aquesta posició el rei negre no està amenaçat, que implica que no hi haurà checkmate
+                if not self.isWatchedBk(bkState[0:2]):
                     checkMate = False
                     break
 
         return checkMate
+
+
+    def isWatchedWk(self, wkPosition):
+        blackState = self.chess.boardSim.currentStateB.copy()
+        bkState = self.getPieceState(blackState, 12)
+        brState = self.getPieceState(blackState, 8)
+
+        #Si les negres maten el rei blanc, no és una configuració correcta
+        if bkState == None:
+            return False
+        #Mirem les possibles posicions del rei blanc i mirem si en alguna pot "matar" al rei negre
+        for bkPosition in self.getNextPositions(bkState):
+            if wkPosition  == bkPosition:
+                #Tindríem un checkMate
+                return True
+        if brState != None:
+            # Mirem les possibles posicions de la torre blanca i mirem si en alguna pot "matar" al rei negre
+            for brPosition in self.getNextPositions(brState):
+                if wkPosition == brPosition:
+                    return True
+
+        return False
+
+
+
+
+    def isWhiteInCheckMate(self, blackState, whiteState):
+        #En aquest mètode mirem si el rei negre està amenaçat per les peces blanques
+        #Agafem l'estat del rei negre
+        wkState = self.getPieceState(whiteState, 6)
+        checkMate = False
+        #Rei negre es troba a una paret, llavors es pot donar un checkMate
+        if wkState[0] == 0 or wkState[0] == 7 or wkState[1] == 0 or wkState[1] == 7:
+            #Obtenim l'estat de les nostres peces blanques
+            bkState = self.getPieceState(blackState, 12)
+            brState = self.getPieceState(blackState, 8)
+            checkMate = True
+            #Obtenim els estats futur de les peces negres
+            nextWStates = self.getListNextStatesW(whiteState)
+            for state in nextWStates:
+                listStates = [brState,bkState]
+                wkState = self.getPieceState(state, 6)
+                listStates.append(wkState)
+                wrState = self.getPieceState(state, 2)
+                listStates.append(wrState)
+                # Movem les peces negres al nou state
+                self.newBoardSim(listStates)
+                self.chess.boardSim.print_board()
+                #Comprovem si en aquesta posició el rei negre no està amenaçat, que implica que no hi haurà checkmate
+                if not self.isWatchedWk(wkState[0:2]):
+                    checkMate = False
+                    break
+
+        return checkMate
+
+
+    def newBoardSim(self, listStates):
+        #Creem una nova board
+        TA = np.zeros((8, 8))
+        for state in listStates:
+            TA[state[0]][state[1]] = state[2]
+
+        self.chess.newBoardSim(TA)
+
 
     def getPieceState(self, state, piece):
         pieceState = None
@@ -134,13 +233,17 @@ class Aichess():
         return pieceState
 
     def getNextPositions(self, state):
+        #Donat un estat, mirem els següents possibles estats
+        #A partir d'aquests retornem una llista amb les posicions, és a dir, [fila,columna]
+        if state == None:
+            return None
         if state[2] > 6:
             nextStates = self.getListNextStatesB([state])
         else:
             nextStates = self.getListNextStatesW([state])
         nextPositions = []
         for i in nextStates:
-            nextPositions.append(i[0:2])
+            nextPositions.append(i[0][0:2])
         return nextPositions
 
 def translate(s):
@@ -176,10 +279,10 @@ if __name__ == "__main__":
     # # black pieces
     # TA[0][4] = 12
 
-    TA[7][7] = 2
-    TA[7][5] = 6
-    #TA[0][7] = 8
-    TA[4][7] = 12
+    TA[0][7] = 8
+    TA[4][5] = 12
+    TA[5][7] = 2
+    TA[4][7] = 6
 
     # initialise board
     print("stating AI chess... ")
@@ -195,4 +298,6 @@ if __name__ == "__main__":
     #call checkmate method
     whiteState = aichess.chess.board.currentStateW.copy()
     blackState = aichess.chess.board.currentStateB.copy()
-    aichess.isCheckMateBlack(whiteState, blackState)
+    #print(aichess.isBlackInCheckMate(whiteState, blackState))
+    print(aichess.isWhiteInCheckMate(blackState, whiteState))
+

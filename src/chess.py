@@ -51,7 +51,10 @@ class Chess():
         # AI current state
         self.currentStateW = [] #self.boardSim.currentStateW.copy()
         self.currentStateB = [] #self.boardSim.currentStateB.copy();
-        
+
+
+    def newBoardSim(self, initboard):
+        self.boardSim = board.Board(initboard, False)
 
     def promotion(self, pos):
         
