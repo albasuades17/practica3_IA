@@ -68,7 +68,6 @@ class Aichess():
 
         return self.listNextStates
 
-
     def isSameState(self, a, b):
 
         isSameState1 = True
@@ -126,41 +125,35 @@ class Aichess():
 
         return False
 
-
-
-
     def isBlackInCheckMate(self, currentState):
         self.newBoardSim(currentState)
         #En aquest mètode mirem si el rei negre està amenaçat per les peces blanques
         #Agafem l'estat del rei negre
         bkState = self.getPieceState(currentState, 12)
-        brState = self.getPieceState(currentState, 8)
         checkMate = False
         #Rei negre es troba a una paret, llavors es pot donar un checkMate
         if bkState[0] == 0 or bkState[0] == 7 or bkState[1] == 0 or bkState[1] == 7:
-            #Obtenim l'estat de les nostres peces blanques
-            wkState = self.getPieceState(currentState, 6)
             wrState = self.getPieceState(currentState, 2)
+            whiteState = self.getWhiteState(currentState)
             checkMate = True
             #Obtenim els estats futur de les peces negres
-            nextBStates = self.getListNextStatesB([bkState,brState])
+            nextBStates = self.getListNextStatesB(self.getBlackState(currentState))
 
             for state in nextBStates:
-                listStates = [wrState,wkState]
-                bkState = self.getPieceState(state, 12)
-                listStates.append(bkState)
-                brState = self.getPieceState(state, 8)
-                listStates.append(brState)
+                newWhiteState = whiteState.copy()
+                # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
+                if wrState != None and wrState[0:2] == state[0][0:2]:
+                    newWhiteState.remove(wrState)
+                state = state + newWhiteState
                 # Movem les peces negres al nou state
-                self.newBoardSim(listStates)
+                self.newBoardSim(state)
 
                 #Comprovem si en aquesta posició el rei negre no està amenaçat, que implica que no hi haurà checkmate
-                if not self.isWatchedBk(listStates):
+                if not self.isWatchedBk(state):
                     checkMate = False
                     break
         self.newBoardSim(currentState)
         return checkMate
-
 
     def isWatchedWk(self, currentState):
         wkPosition = self.getPieceState(currentState,6)[0:2]
@@ -183,39 +176,34 @@ class Aichess():
 
         return False
 
-
-
-
     def isWhiteInCheckMate(self, currentState):
         self.newBoardSim(currentState)
         #En aquest mètode mirem si el rei negre està amenaçat per les peces blanques
         #Agafem l'estat del rei negre
         wkState = self.getPieceState(currentState, 6)
-        wrState = self.getPieceState(currentState, 2)
         checkMate = False
         #Rei negre es troba a una paret, llavors es pot donar un checkMate
         if wkState[0] == 0 or wkState[0] == 7 or wkState[1] == 0 or wkState[1] == 7:
             #Obtenim l'estat de les nostres peces blanques
-            bkState = self.getPieceState(currentState, 12)
             brState = self.getPieceState(currentState, 8)
+            blackState = self.getBlackState(currentState)
             checkMate = True
             #Obtenim els estats futur de les peces negres
-            nextWStates = self.getListNextStatesW([wkState,wrState])
+            nextWStates = self.getListNextStatesW(self.getWhiteState(currentState))
             for state in nextWStates:
-                listStates = [brState,bkState]
-                wkState = self.getPieceState(state, 6)
-                listStates.append(wkState)
-                wrState = self.getPieceState(state, 2)
-                listStates.append(wrState)
+                newBlackState = blackState.copy()
+                # Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
+                if brState != None and brState[0:2] == state[0][0:2]:
+                    newBlackState.remove(brState)
+                state = state + newBlackState
                 # Movem les peces negres al nou state
-                self.newBoardSim(listStates)
+                self.newBoardSim(state)
                 #Comprovem si en aquesta posició el rei negre no està amenaçat, que implica que no hi haurà checkmate
-                if not self.isWatchedWk(listStates):
+                if not self.isWatchedWk(state):
                     checkMate = False
                     break
         self.newBoardSim(currentState)
         return checkMate
-
 
     def newBoardSim(self, listStates):
         #Creem una nova board
@@ -224,7 +212,6 @@ class Aichess():
             TA[state[0]][state[1]] = state[2]
 
         self.chess.newBoardSim(TA)
-
 
     def getPieceState(self, state, piece):
         pieceState = None
@@ -256,10 +243,42 @@ class Aichess():
             nextPositions.append(i[0][0:2])
         return nextPositions
 
+    def getWhiteState(self, currentState):
+        whiteState = []
+        wkState = self.getPieceState(currentState, 6)
+        whiteState.append(wkState)
+        wrState = self.getPieceState(currentState, 2)
+        if wrState != None:
+            whiteState.append(wrState)
+        return whiteState
+
+    def getBlackState(self, currentState):
+        blackState = []
+        bkState = self.getPieceState(currentState, 12)
+        blackState.append(bkState)
+        brState = self.getPieceState(currentState, 8)
+        if brState != None:
+            blackState.append(brState)
+        return blackState
+
+    def getMovement(self, state, nextState):
+        movedPiece = None
+        pieceState = None
+        pieceNextState = None
+        for piece in state:
+            if piece not in nextState:
+                movedPiece = piece[2]
+                pieceNext = self.getPieceState(nextState, movedPiece)
+                if pieceNext != None:
+                    pieceState = piece
+                    pieceNextState = pieceNext
+                    break
+
+        return [pieceState, pieceNextState]
 
     def minimaxGame(self):
         colorWin = None
-        for i in range(1):
+        for i in range(2):
             currentState = self.getCurrentState()
             if i%2 == 0:
                 self.minimaxWhite(currentState, 4)
@@ -277,16 +296,12 @@ class Aichess():
         self.chess.board.print_board()
         return colorWin
 
-
-
     def minimaxWhite(self, state, depthMax):
         nextState = self.maxValueWhite(state, 0, depthMax)
         print(state, ",", nextState)
         if not self.isSameState(state,nextState):
-            self.chess.move(state,nextState)
-
-
-
+            movement = self.getMovement(state, nextState)
+            self.chess.move(movement[0],movement[1])
 
     def maxValueWhite(self, currentState, depth, depthMax):
         # Ens movem a nova posició en boardSim
@@ -294,6 +309,7 @@ class Aichess():
         #Últim moviment ha estat de les negres.
         whiteVictory = self.isWatchedBk(currentState)
         whiteDefeat = self.isWhiteInCheckMate(currentState)
+
 
         if whiteVictory:
             if depth == 0:
@@ -306,13 +322,20 @@ class Aichess():
             else:
                 return -1
 
-        if depth == depthMax - 1:
+        if depth == depthMax:
             return 0
 
         maxValue = -10000
         maxState = None
-        whiteState = [self.getPieceState(currentState,6),self.getPieceState(currentState,2)]
+        whiteState = self.getWhiteState(currentState)
+        blackState = self.getBlackState(currentState)
+        brState = self.getPieceState(currentState, 8)
         for state in self.getListNextStatesW(whiteState):
+            newBlackState = blackState.copy()
+            #Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
+            if brState != None and brState[0:2] == state[0][0:2]:
+                newBlackState.remove(brState)
+            state = state + newBlackState
             valueSate = self.minValueWhite(state, depth + 1, depthMax)
             if valueSate > maxValue:
                 maxValue = valueSate
@@ -322,6 +345,7 @@ class Aichess():
         if depth == 0:
             return maxState
         return maxValue
+
     def minValueWhite(self, currentState, depth, depthMax):
         #Ens movem a nova posició en boardSim
         self.newBoardSim(currentState)
@@ -329,18 +353,27 @@ class Aichess():
         whiteVictory = self.isBlackInCheckMate(currentState)
         whiteDefeat = self.isWatchedWk(currentState)
 
+
         if whiteVictory: return 1
         elif whiteDefeat: return -1
 
-        if depth == depthMax - 1:
+        if depth == depthMax:
             return 0
-        blackState = [self.getPieceState(currentState,12),self.getPieceState(currentState,8)]
+        blackState = self.getBlackState(currentState)
+        whiteState = self.getWhiteState(currentState)
+        wrState = self.getPieceState(currentState, 2)
 
         minValue = 10000
         for state in self.getListNextStatesB(blackState):
+            newWhiteState = whiteState.copy()
+            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
+            if wrState != None and wrState[0:2] == state[0][0:2]:
+                newWhiteState.remove(wrState)
+            state = state + newWhiteState
             minValue = min(minValue, self.maxValueWhite(state, depth + 1, depthMax))
 
         return minValue
+
     def minValue(self, currentState, color, depth, depthMax):
         if depth == depthMax - 1:
             return 0
@@ -395,10 +428,14 @@ if __name__ == "__main__":
     # # black pieces
     # TA[0][4] = 12
 
-    TA[0][7] = 2
+
+    TA[0][6] = 2
     TA[4][4] = 6
-    TA[0][0] = 8
+    TA[7][0] = 8
     TA[4][7] = 12
+
+
+
 
     # initialise board
     print("stating AI chess... ")
@@ -416,5 +453,5 @@ if __name__ == "__main__":
     blackState = aichess.chess.board.currentStateB.copy()
     #print(aichess.isBlackInCheckMate(aichess.getCurrentState()))
     #print(aichess.isWhiteInCheckMate(aichess.getCurrentState()))
-    aichess.minimaxGame()
+    aichess.minimaxWhite(aichess.getCurrentState(), 3)
 
