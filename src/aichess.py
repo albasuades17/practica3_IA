@@ -896,6 +896,6 @@ if __name__ == "__main__":
     blackState = aichess.chess.board.currentStateB.copy()
 
     #aichess.minimaxGame(4)
-    #aichess.alphaBetaPoda(3)
-    aichess.expectimax(3)
+    aichess.alphaBetaPoda(4)
+    #aichess.expectimax(3)
 
