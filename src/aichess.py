@@ -47,10 +47,33 @@ class Aichess():
 
         self.listNextStates = []
         self.listVisitedStates = []
+        self.listVisitedSituations = []
         self.pathToTarget = []
         self.currentStateW = self.chess.boardSim.currentStateW;
         self.depthMax = 8;
         self.checkMate = False
+
+    def copyState(self, state):
+        copyState = []
+        for piece in state:
+            copyState.append(piece.copy())
+        return copyState
+    def isVisitedSituation(self, color, mystate):
+        if (len(self.listVisitedSituations) > 0):
+            perm_state = list(permutations(mystate))
+
+            isVisited = False
+            for j in range(len(perm_state)):
+
+                for k in range(len(self.listVisitedSituations)):
+                    if self.isSameState(list(perm_state[j]), self.listVisitedSituations.__getitem__(k)[1]) and color == \
+                            self.listVisitedSituations.__getitem__(k)[0]:
+                        isVisited = True
+
+            return isVisited
+        else:
+            return False
+
 
     def getCurrentStateW(self):
 
@@ -300,6 +323,81 @@ class Aichess():
 
         bkState = self.getPieceState(currentState, 12)
         wkState = self.getPieceState(currentState, 6)
+        wrState = self.getPieceState(currentState, 2)
+        brState = self.getPieceState(currentState, 8)
+        filaBk = bkState[0]
+        columnaBk = bkState[1]
+        filaWk = wkState[0]
+        columnaWk = wkState[1]
+        if wrState != None:
+            filaWr = wrState[0]
+            columnaWr = wrState[1]
+        if brState != None:
+            filaBr = brState[0]
+            columnaBr = brState[1]
+        # Mirem si han matat la torre negra
+        if brState == None:
+            value += 30
+            fila = abs(filaBk - filaWk)
+            columna = abs(columnaWk - columnaBk)
+            distReis = min(fila, columna) + abs(fila - columna)
+            if distReis >= 3 and wrState != None:
+                filaR = abs(filaBk - filaWr)
+                columnaR = abs(columnaWr - columnaBk)
+                value += (min(filaR, columnaR) + abs(filaR - columnaR))/10
+            # Si som les blanques, com més aprop tinguem el nostre rei de l'altre, millor.
+            # Li restem 7 a la distància que hi ha entre els dos reis, ja que en un taulell d'escacs poden estar a una distància màxima de 7 moviments.
+            value += (7 - distReis)
+            #Si el rei negre està en una paret, prioritzem que estigui prop d'una cantonada, per així arraconar-lo.
+            if bkState[0] == 0 or bkState[0] == 7 or bkState[1] == 0 or bkState[1] == 7:
+                value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
+            #Si no, només prioritzem que s'apropi a una paret, per així arribar al check mate.
+            else:
+                value += (max(abs(filaBk - 3.5), abs(columnaBk - 3.5))) * 10
+                #value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
+
+
+        # Han matat la torre blanca. A dins del mètode es considerem les mateixes condicions que en l'apartat anterior però amb els valors invertits.
+        if wrState == None:
+            value += -30
+            fila = abs(filaBk - filaWk)
+            columna = abs(columnaWk - columnaBk)
+            distReis = min(fila, columna) + abs(fila - columna)
+
+            if distReis >= 3 and brState != None:
+                filaR = abs(filaWk - filaBr)
+                columnaR = abs(columnaBr - columnaWk)
+                value -= (min(filaR, columnaR) + abs(filaR - columnaR)) / 10
+            # Si som les blanques, com més aprop tinguem el nostre rei de l'altre, millor.
+            # Li restem 7 a la distància que hi ha entre els dos reis, ja que en un taulell d'escacs poden estar a una distància màxima de 7 moviments.
+            value += (-7 + distReis)
+
+            if wkState[0] == 0 or wkState[0] == 7 or wkState[1] == 0 or wkState[1] == 7:
+                value -= (abs(filaWk - 3.5) + abs(columnaWk - 3.5)) * 10
+            else:
+                value -= (max(abs(filaWk - 3.5), abs(columnaWk - 3.5))) * 10
+
+        # S'està fent un check a les negres
+        if self.isWatchedBk(currentState):
+            value += 20
+
+        # S'està fent un check a les blanques
+        if self.isWatchedWk(currentState):
+            value += -20
+
+        # Si són les negres, els valors negatius, són positius
+        if not color:
+            value = (-1) * value
+
+        return value
+
+    def heuristica2(self, currentState, color):
+        # En aquest mètode, es calcula l'heurística tant per les blanques com per les negres.
+        # El value que calculem és per les blanques però al final de tot, segons el paràmetre color que tinguem, multipliquem per -1 el resultat.
+        value = 0
+
+        bkState = self.getPieceState(currentState, 12)
+        wkState = self.getPieceState(currentState, 6)
         filaBk = bkState[0]
         columnaBk = bkState[1]
         filaWk = wkState[0]
@@ -312,14 +410,13 @@ class Aichess():
             # Si som les blanques, com més aprop tinguem el nostre rei de l'altre, millor.
             # Li restem 7 a la distància que hi ha entre els dos reis, ja que en un taulell d'escacs poden estar a una distància màxima de 7 moviments.
             value += (7 - (min(fila, columna) + abs(fila - columna)))
-            #Si el rei negre està en una paret, prioritzem que estigui prop d'una cantonada, per així arraconar-lo.
+            # Si el rei negre està en una paret, prioritzem que estigui prop d'una cantonada, per així arraconar-lo.
             if bkState[0] == 0 or bkState[0] == 7 or bkState[1] == 0 or bkState[1] == 7:
                 value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
-            #Si no, només prioritzem que s'apropi a una paret, per així arribar al check mate.
+            # Si no, només prioritzem que s'apropi a una paret, per així arribar al check mate.
             else:
-                #value += (max(abs(filaBk - 3.5), abs(columnaBk - 3.5))) * 10
-                value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
-
+                value += (max(abs(filaBk - 3.5), abs(columnaBk - 3.5))) * 10
+                # value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
 
         # Han matat la torre blanca. A dins del mètode es considerem les mateixes condicions que en l'apartat anterior però amb els valors invertits.
         if self.getPieceState(currentState, 2) == None:
@@ -407,7 +504,7 @@ class Aichess():
             #Ara, state, serà el nostre estat actual
             state = state + newBlackState
             #No considerem els moviments on el rei blanc estigui vigilat
-            if not self.isWatchedWk(state) and not self.isVisitedSituation(state):
+            if not self.isWatchedWk(state):
                 valueSate = self.minValueWhite(state, depth + 1, depthMax)
                 #En cas que sigui un bon estat, actualitzem el valor màxim i el millor successor de la branca
                 if valueSate > maxValue:
@@ -524,19 +621,22 @@ class Aichess():
             return False
         if self.isWatchedBk(currentState):
             return True
-
+        copyState = self.copyState(currentState)
+        self.listVisitedSituations.append((False, copyState))
         colorWin = None
         for i in range(50):
             currentState = self.getCurrentState()
             # Toca moure a les blanques
             if i % 2 == 0:
-                self.podaWhite(currentState, depthWhite)
+                if not self.podaWhite(currentState, depthWhite):
+                    break
                 if self.isBlackInCheckMate(currentState):
                     colorWin = True
                     break
             # Toca moure a les negres
             else:
-                self.podaBlack(currentState, depthBlack)
+                if not self.podaBlack(currentState, depthBlack):
+                    break
                 if self.isWhiteInCheckMate(currentState):
                     colorWin = False
                     break
@@ -550,6 +650,10 @@ class Aichess():
         alpha = -10000
         beta = 10000
         nextState = self.podaMaxValueWhite(state, 0, depthMax, alpha, beta)
+        copyState = self.copyState(nextState)
+        if self.isVisitedSituation(True, copyState):
+            return False
+        self.listVisitedSituations.append((True, copyState))
         #Veiem quina peça s'ha mogut
         movement = self.getMovement(state, nextState)
         #La movem al taulell "definitiu"
@@ -636,6 +740,10 @@ class Aichess():
         alpha = -10000
         beta = 10000
         nextState = self.podaMaxValueBlack(state, 0, depthMax, alpha, beta).copy()
+        copyState = self.copyState(nextState)
+        if self.isVisitedSituation(False, copyState):
+            return False
+        self.listVisitedSituations.append((False, copyState))
         #Mirem quina peça s'ha mogut i la movem al taulell
         movement = self.getMovement(state, nextState)
         self.chess.move(movement[0], movement[1])
@@ -958,8 +1066,10 @@ if __name__ == "__main__":
     # TA[0][4] = 12
 
     TA[0][7] = 2
+    #TA[7][0] = 2
     TA[7][4] = 6
     #TA[0][7] = 8
+    #TA[0][4] = 12
     TA[2][5] = 12
 
     # initialise board
@@ -1010,6 +1120,6 @@ if __name__ == "__main__":
 
 
     #aichess.minimaxGame(4,4)
-    aichess.alphaBetaPoda(4,5)
+    aichess.alphaBetaPoda(4,4)
     #aichess.expectimax(3)
 
