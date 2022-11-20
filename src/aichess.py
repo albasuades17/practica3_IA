@@ -391,27 +391,29 @@ class Aichess():
 
         return value
 
-
     def minimaxGame(self, depthWhite,depthBlack):
         currentState = self.getCurrentState()
-        #Comprovem que l'estat donat no sigui un estat final
+        # Comprovem que l'estat donat no sigui un estat final.
         if self.isWhiteInCheckMate(currentState):
             return False
         if self.isWatchedBk(currentState):
             return True
-
+        copyState = self.copyState(currentState)
+        self.listVisitedSituations.append((False, copyState))
         colorWin = None
-        for i in range(30):
+        for i in range(50):
             currentState = self.getCurrentState()
             # Toca moure a les blanques
             if i % 2 == 0:
-                self.minimaxWhite(currentState, depthWhite)
+                if not self.minimaxWhite(currentState, depthWhite):
+                    break
                 if self.isBlackInCheckMate(currentState):
                     colorWin = True
                     break
             # Toca moure a les negres
             else:
-                self.minimaxBlack(currentState, depthBlack)
+                if not self.minimaxBlack(currentState, depthBlack):
+                    break
                 if self.isWhiteInCheckMate(currentState):
                     colorWin = False
                     break
@@ -423,8 +425,15 @@ class Aichess():
 
     def minimaxWhite(self, state, depthMax):
         nextState = self.maxValueWhite(state, 0, depthMax)
+        copyState = self.copyState(nextState)
+        if self.isVisitedSituation(True, copyState):
+            return False
+        self.listVisitedSituations.append((True, copyState))
+        # Veiem quina peça s'ha mogut
         movement = self.getMovement(state, nextState)
+        # La movem al taulell "definitiu"
         self.chess.move(movement[0], movement[1])
+        return True
 
     def maxValueWhite(self, currentState, depth, depthMax):
         # Últim moviment ha estat de les negres.
@@ -495,10 +504,15 @@ class Aichess():
 
     def minimaxBlack(self, state, depthMax):
         nextState = self.maxValueBlack(state, 0, depthMax)
-        print("Black movement: ", state, nextState)
-        if not self.isSameState(state, nextState):
-            movement = self.getMovement(state, nextState)
-            self.chess.move(movement[0], movement[1])
+        copyState = self.copyState(nextState)
+        if self.isVisitedSituation(True, copyState):
+            return False
+        self.listVisitedSituations.append((True, copyState))
+        # Veiem quina peça s'ha mogut
+        movement = self.getMovement(state, nextState)
+        # La movem al taulell "definitiu"
+        self.chess.move(movement[0], movement[1])
+        return True
 
     def maxValueBlack(self, currentState, depth, depthMax):
         #Aquest mètode és equivalent a maxValueWhite però amb valors i peces invertits.
@@ -813,25 +827,29 @@ class Aichess():
 
         return esperanca / sum
 
-    def expectimax(self, depth):
+    def expectimax(self, depthWhite, depthBlack):
         currentState = self.getCurrentState()
+        # Comprovem que l'estat donat no sigui un estat final.
         if self.isWhiteInCheckMate(currentState):
             return False
         if self.isWatchedBk(currentState):
             return True
-
+        copyState = self.copyState(currentState)
+        self.listVisitedSituations.append((False, copyState))
         colorWin = None
-        for i in range(30):
+        for i in range(50):
             currentState = self.getCurrentState()
             # Toca moure a les blanques
             if i % 2 == 0:
-                self.expectimaxWhite(currentState, depth)
+                if not self.expectimaxWhite(currentState, depthWhite):
+                    break
                 if self.isBlackInCheckMate(currentState):
                     colorWin = True
                     break
             # Toca moure a les negres
             else:
-                self.expectimaxBlack(currentState, depth)
+                if not self.expectimaxBlack(currentState, depthBlack):
+                    break
                 if self.isWhiteInCheckMate(currentState):
                     colorWin = False
                     break
@@ -843,8 +861,15 @@ class Aichess():
 
     def expectimaxWhite(self, state, depthMax):
         nextState = self.expMaxValueWhite(state, 0, depthMax)
+        copyState = self.copyState(nextState)
+        if self.isVisitedSituation(True, copyState):
+            return False
+        self.listVisitedSituations.append((True, copyState))
+        # Veiem quina peça s'ha mogut
         movement = self.getMovement(state, nextState)
+        # La movem al taulell "definitiu"
         self.chess.move(movement[0], movement[1])
+        return True
 
     def expMaxValueWhite(self, currentState, depth, depthMax):
         #Aquest mètode és el mateix que el maxValueWhite.
@@ -878,7 +903,6 @@ class Aichess():
         # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
         # És el millor possible dels estats visitats, segons el minimax.
         if depth == 0:
-            print("heuristica blanques: ", maxValue)
             return maxState
         return maxValue
 
@@ -913,8 +937,15 @@ class Aichess():
 
     def expectimaxBlack(self, state, depthMax):
         nextState = self.expMaxValueBlack(state, 0, depthMax)
+        copyState = self.copyState(nextState)
+        if self.isVisitedSituation(True, copyState):
+            return False
+        self.listVisitedSituations.append((True, copyState))
+        # Veiem quina peça s'ha mogut
         movement = self.getMovement(state, nextState)
+        # La movem al taulell "definitiu"
         self.chess.move(movement[0], movement[1])
+        return True
 
     def expMaxValueBlack(self, currentState, depth, depthMax):
         #Aquest mètode és el mateix que el maxValueBlack.
@@ -980,6 +1011,70 @@ class Aichess():
         #Assignem probabilitats a cada valor i calculem l'esperança
         return self.calculateValue(values)
 
+    def expectWhitePodaBlack(self, depthWhite, depthBlack):
+        currentState = self.getCurrentState()
+        # Comprovem que l'estat donat no sigui un estat final.
+        if self.isWhiteInCheckMate(currentState):
+            return False
+        if self.isWatchedBk(currentState):
+            return True
+        copyState = self.copyState(currentState)
+        self.listVisitedSituations.append((False, copyState))
+        colorWin = None
+        for i in range(50):
+            currentState = self.getCurrentState()
+            # Toca moure a les blanques
+            if i % 2 == 0:
+                if not self.expectimaxWhite(currentState, depthWhite):
+                    break
+                if self.isBlackInCheckMate(currentState):
+                    colorWin = True
+                    break
+            # Toca moure a les negres
+            else:
+                if not self.podaBlack(currentState, depthBlack):
+                    break
+                if self.isWhiteInCheckMate(currentState):
+                    colorWin = False
+                    break
+
+            self.chess.board.print_board()
+
+        self.chess.board.print_board()
+        return colorWin
+
+    def expectBlackPodaWhite(self, depthWhite, depthBlack):
+        currentState = self.getCurrentState()
+        # Comprovem que l'estat donat no sigui un estat final.
+        if self.isWhiteInCheckMate(currentState):
+            return False
+        if self.isWatchedBk(currentState):
+            return True
+        copyState = self.copyState(currentState)
+        self.listVisitedSituations.append((False, copyState))
+        colorWin = None
+        for i in range(50):
+            currentState = self.getCurrentState()
+            # Toca moure a les blanques
+            if i % 2 == 0:
+                if not self.podaWhite(currentState, depthWhite):
+                    break
+                if self.isBlackInCheckMate(currentState):
+                    colorWin = True
+                    break
+            # Toca moure a les negres
+            else:
+                if not self.expectimaxBlack(currentState, depthBlack):
+                    break
+                if self.isWhiteInCheckMate(currentState):
+                    colorWin = False
+                    break
+
+            self.chess.board.print_board()
+
+        self.chess.board.print_board()
+        return colorWin
+
 def translate(s):
     """
     Translates traditional board coordinates of chess into list indices
@@ -1027,15 +1122,18 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    numExercici = 2
+    numExercici = 5
+    apartat = "a"
+
     #Tots els exercicis només els executem 1 cop, ja que els resultats són sempre els mateixos
     if numExercici == 1:
         aichess.minimaxGame(4,4)
+
     resultats = []
 
     if numExercici == 2:
         #El resultat amb l'algorisme poda alpha beta és el mateix però més ràpid. Així que farem aquest apartat utilitzant-lo
-        for i in range(1,5):
+        for i in range(1,6):
             resultats.append([])
             for j in range(1,6):
                 aichess = Aichess(TA, True)
@@ -1051,9 +1149,63 @@ if __name__ == "__main__":
                 print(resultats)
 
 
-        for i in range(5):
+        for i in range(6):
             tmpStr = "| "
             for j in range(6):
+                if i == 0:
+                    tmpStr += str(j) + " | "
+                elif j == 0:
+                    tmpStr += str(i) + " | "
+                else:
+                    tmpStr += resultats[i-1][j-1] + " | "
+            print(tmpStr)
+
+    if numExercici == 5 and apartat == "a":
+        for i in range(1,5):
+            resultats.append([])
+            for j in range(1,5):
+                aichess = Aichess(TA, True)
+                aichess.chess.boardSim.print_board()
+                resultatExecucio = aichess.expectWhitePodaBlack(i,j)
+                if resultatExecucio == None:
+                    resultats[i-1].append("-")
+                elif resultatExecucio:
+                    resultats[i-1].append("W")
+                else:
+                    resultats[i-1].append("B")
+                print(resultats)
+
+
+        for i in range(5):
+            tmpStr = "| "
+            for j in range(5):
+                if i == 0:
+                    tmpStr += str(j) + " | "
+                elif j == 0:
+                    tmpStr += str(i) + " | "
+                else:
+                    tmpStr += resultats[i-1][j-1] + " | "
+            print(tmpStr)
+
+    if numExercici == 5 and apartat == "b":
+        for i in range(1,5):
+            resultats.append([])
+            for j in range(1,5):
+                aichess = Aichess(TA, True)
+                aichess.chess.boardSim.print_board()
+                resultatExecucio = aichess.expectBlackPodaWhite(i,j)
+                if resultatExecucio == None:
+                    resultats[i-1].append("-")
+                elif resultatExecucio:
+                    resultats[i-1].append("W")
+                else:
+                    resultats[i-1].append("B")
+                print(resultats)
+
+
+        for i in range(5):
+            tmpStr = "| "
+            for j in range(5):
                 if i == 0:
                     tmpStr += str(j) + " | "
                 elif j == 0:
