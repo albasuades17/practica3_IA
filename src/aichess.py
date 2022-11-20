@@ -337,7 +337,7 @@ class Aichess():
             columnaBr = brState[1]
         # Mirem si han matat la torre negra
         if brState == None:
-            value += 30
+            value += 50
             fila = abs(filaBk - filaWk)
             columna = abs(columnaWk - columnaBk)
             distReis = min(fila, columna) + abs(fila - columna)
@@ -359,7 +359,7 @@ class Aichess():
 
         # Han matat la torre blanca. A dins del mètode es considerem les mateixes condicions que en l'apartat anterior però amb els valors invertits.
         if wrState == None:
-            value += -30
+            value += -50
             fila = abs(filaBk - filaWk)
             columna = abs(columnaWk - columnaBk)
             distReis = min(fila, columna) + abs(fila - columna)
@@ -391,58 +391,6 @@ class Aichess():
 
         return value
 
-    def heuristica2(self, currentState, color):
-        # En aquest mètode, es calcula l'heurística tant per les blanques com per les negres.
-        # El value que calculem és per les blanques però al final de tot, segons el paràmetre color que tinguem, multipliquem per -1 el resultat.
-        value = 0
-
-        bkState = self.getPieceState(currentState, 12)
-        wkState = self.getPieceState(currentState, 6)
-        filaBk = bkState[0]
-        columnaBk = bkState[1]
-        filaWk = wkState[0]
-        columnaWk = wkState[1]
-        # Mirem si han matat la torre negra
-        if self.getPieceState(currentState, 8) == None:
-            value += 30
-            fila = abs(filaBk - filaWk)
-            columna = abs(columnaWk - columnaBk)
-            # Si som les blanques, com més aprop tinguem el nostre rei de l'altre, millor.
-            # Li restem 7 a la distància que hi ha entre els dos reis, ja que en un taulell d'escacs poden estar a una distància màxima de 7 moviments.
-            value += (7 - (min(fila, columna) + abs(fila - columna)))
-            # Si el rei negre està en una paret, prioritzem que estigui prop d'una cantonada, per així arraconar-lo.
-            if bkState[0] == 0 or bkState[0] == 7 or bkState[1] == 0 or bkState[1] == 7:
-                value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
-            # Si no, només prioritzem que s'apropi a una paret, per així arribar al check mate.
-            else:
-                value += (max(abs(filaBk - 3.5), abs(columnaBk - 3.5))) * 10
-                # value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
-
-        # Han matat la torre blanca. A dins del mètode es considerem les mateixes condicions que en l'apartat anterior però amb els valors invertits.
-        if self.getPieceState(currentState, 2) == None:
-            value += -30
-            fila = abs(filaBk - filaWk)
-            columna = abs(columnaWk - columnaBk)
-            value += (-7 + (min(fila, columna) + abs(fila - columna)))
-
-            if wkState[0] == 0 or wkState[0] == 7 or wkState[1] == 0 or wkState[1] == 7:
-                value -= (abs(filaWk - 3.5) + abs(columnaWk - 3.5)) * 10
-            else:
-                value -= (max(abs(filaWk - 3.5), abs(columnaWk - 3.5))) * 10
-
-        # S'està fent un check a les negres
-        if self.isWatchedBk(currentState):
-            value += 20
-
-        # S'està fent un check a les blanques
-        if self.isWatchedWk(currentState):
-            value += -20
-
-        # Si són les negres, els valors negatius, són positius
-        if not color:
-            value = (-1) * value
-
-        return value
 
     def minimaxGame(self, depthWhite,depthBlack):
         currentState = self.getCurrentState()
@@ -1065,12 +1013,12 @@ if __name__ == "__main__":
     # # black pieces
     # TA[0][4] = 12
 
-    TA[0][7] = 2
-    #TA[7][0] = 2
+    #TA[0][7] = 2
+    TA[7][0] = 2
     TA[7][4] = 6
-    #TA[0][7] = 8
-    #TA[0][4] = 12
-    TA[2][5] = 12
+    TA[0][7] = 8
+    TA[0][4] = 12
+    #TA[2][5] = 12
 
     # initialise board
     print("stating AI chess... ")
@@ -1079,7 +1027,7 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    numExercici = 0
+    numExercici = 2
     #Tots els exercicis només els executem 1 cop, ja que els resultats són sempre els mateixos
     if numExercici == 1:
         aichess.minimaxGame(4,4)
@@ -1087,7 +1035,7 @@ if __name__ == "__main__":
 
     if numExercici == 2:
         #El resultat amb l'algorisme poda alpha beta és el mateix però més ràpid. Així que farem aquest apartat utilitzant-lo
-        for i in range(1,6):
+        for i in range(1,5):
             resultats.append([])
             for j in range(1,6):
                 aichess = Aichess(TA, True)
@@ -1103,7 +1051,7 @@ if __name__ == "__main__":
                 print(resultats)
 
 
-        for i in range(6):
+        for i in range(5):
             tmpStr = "| "
             for j in range(6):
                 if i == 0:
@@ -1120,6 +1068,6 @@ if __name__ == "__main__":
 
 
     #aichess.minimaxGame(4,4)
-    aichess.alphaBetaPoda(4,4)
+    #aichess.alphaBetaPoda(4,2)
     #aichess.expectimax(3)
 
