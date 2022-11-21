@@ -325,16 +325,19 @@ class Aichess():
         wkState = self.getPieceState(currentState, 6)
         wrState = self.getPieceState(currentState, 2)
         brState = self.getPieceState(currentState, 8)
+
         filaBk = bkState[0]
         columnaBk = bkState[1]
         filaWk = wkState[0]
         columnaWk = wkState[1]
+
         if wrState != None:
             filaWr = wrState[0]
             columnaWr = wrState[1]
         if brState != None:
             filaBr = brState[0]
             columnaBr = brState[1]
+
         # Mirem si han matat la torre negra
         if brState == None:
             value += 50
@@ -354,8 +357,6 @@ class Aichess():
             #Si no, només prioritzem que s'apropi a una paret, per així arribar al check mate.
             else:
                 value += (max(abs(filaBk - 3.5), abs(columnaBk - 3.5))) * 10
-                #value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
-
 
         # Han matat la torre blanca. A dins del mètode es considerem les mateixes condicions que en l'apartat anterior però amb els valors invertits.
         if wrState == None:
@@ -545,7 +546,6 @@ class Aichess():
         # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
         # És el millor possible dels estats visitats, segons el minimax.
         if depth == 0:
-            print("heuristica negres: ", maxValue)
             return maxState
         return maxValue
 
@@ -919,8 +919,6 @@ class Aichess():
         whiteState = self.getWhiteState(currentState)
         wrState = self.getPieceState(currentState, 2)
 
-        sumValue = 0
-        numStates = 0
         values = []
         for state in self.getListNextStatesB(blackState):
             newWhiteState = whiteState.copy()
@@ -995,8 +993,6 @@ class Aichess():
         blackState = self.getBlackState(currentState)
         brState = self.getPieceState(currentState, 8)
 
-        sumValue = 0
-        numStates = 0
         values = []
         for state in self.getListNextStatesW(whiteState):
             newBlackState = blackState.copy()
@@ -1102,18 +1098,12 @@ if __name__ == "__main__":
 
     # intiialize board
     TA = np.zeros((8, 8))
-    # white pieces
-    # TA[0][0] = 2
-    # TA[2][4] = 6
-    # # black pieces
-    # TA[0][4] = 12
 
-    #TA[0][7] = 2
+    #Configuració inicial del taulell
     TA[7][0] = 2
     TA[7][4] = 6
     TA[0][7] = 8
     TA[0][4] = 12
-    #TA[2][5] = 12
 
     # initialise board
     print("stating AI chess... ")
@@ -1122,17 +1112,21 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    numExercici = 5
-    apartat = "a"
+    #Per provar l'execució d'un exercici en concret, s'utilitzen les variables numExercici i apartat.
+    numExercici = 3
+    apartat = "b"
 
     #Tots els exercicis només els executem 1 cop, ja que els resultats són sempre els mateixos
     if numExercici == 1:
         aichess.minimaxGame(4,4)
 
+    if numExercici == 3:
+        aichess.alphaBetaPoda(4,4)
+
     resultats = []
 
-    if numExercici == 2:
-        #El resultat amb l'algorisme poda alpha beta és el mateix però més ràpid. Així que farem aquest apartat utilitzant-lo
+    if numExercici == 2 or numExercici == 4:
+        #El resultat amb l'algorisme poda alpha beta és el mateix que el de minimax però més ràpid.
         for i in range(1,6):
             resultats.append([])
             for j in range(1,6):
@@ -1146,8 +1140,6 @@ if __name__ == "__main__":
                     resultats[i-1].append("W")
                 else:
                     resultats[i-1].append("B")
-                print(resultats)
-
 
         for i in range(6):
             tmpStr = "| "
@@ -1213,13 +1205,4 @@ if __name__ == "__main__":
                 else:
                     tmpStr += resultats[i-1][j-1] + " | "
             print(tmpStr)
-
-
-
-
-
-
-    #aichess.minimaxGame(4,4)
-    #aichess.alphaBetaPoda(4,2)
-    #aichess.expectimax(3)
 
