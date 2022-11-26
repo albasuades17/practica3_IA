@@ -14,6 +14,7 @@ import numpy as np
 import sys
 import queue
 from typing import List
+import random
 
 RawStateType = List[List[List[int]]]
 
@@ -52,6 +53,28 @@ class Aichess():
         self.currentStateW = self.chess.boardSim.currentStateW;
         self.depthMax = 8;
         self.checkMate = False
+        #Donat un estat, la torre es pot moure a 14 llocs diferents, i el rei a 8, com a màxim.
+        self.qTable = {}
+
+
+    def stateToString(self, whiteState):
+        stringState = ""
+        wkState = self.getPieceState(whiteState,6)
+        wrState = self.getPieceState(whiteState,2)
+        stringState = str(wkState[0])+","+str(wkState[1])+","
+        if wrState != None:
+            stringState += str(wrState[0])+","+str(wrState[1])
+
+        return stringState
+
+    def stringToState(self, stringWhiteState):
+        whiteState = []
+        whiteState.append([int(stringWhiteState[0]),int(stringWhiteState[2]),6])
+        if len(stringWhiteState) > 4:
+            whiteState.append([int(stringWhiteState[4]),int(stringWhiteState[6]),2])
+
+        return whiteState
+
 
     def copyState(self, state):
         copyState = []
@@ -77,7 +100,7 @@ class Aichess():
 
     def getCurrentStateW(self):
 
-        return self.myCurrentStateW
+        return self.chess.boardSim.currentStateW
 
     def getListNextStatesW(self, myState):
 
@@ -316,760 +339,124 @@ class Aichess():
 
         return [pieceState, pieceNextState]
 
-    def heuristica(self, currentState, color):
-        #En aquest mètode, es calcula l'heurística tant per les blanques com per les negres.
-        #El value que calculem és per les blanques però al final de tot, segons el paràmetre color que tinguem, multipliquem per -1 el resultat.
-        value = 0
+    def isCheckMate(self, mystate):
+        #posem els possibles estats on es produeixi check mate
+        listCheckMateStates = [[[0,0,2],[2,4,6]],[[0,1,2],[2,4,6]],[[0,2,2],[2,4,6]],[[0,6,2],[2,4,6]],[[0,7,2],[2,4,6]]]
 
-        bkState = self.getPieceState(currentState, 12)
-        wkState = self.getPieceState(currentState, 6)
-        wrState = self.getPieceState(currentState, 2)
-        brState = self.getPieceState(currentState, 8)
+        #Mirem totes les permutacions de l'estat i si coincideixen amb la llista de CheckMates
+        for permState in list(permutations(mystate)):
+            if list(permState) in listCheckMateStates:
+                return True
 
-        filaBk = bkState[0]
-        columnaBk = bkState[1]
-        filaWk = wkState[0]
-        columnaWk = wkState[1]
+        return False
 
-        if wrState != None:
-            filaWr = wrState[0]
-            columnaWr = wrState[1]
-        if brState != None:
-            filaBr = brState[0]
-            columnaBr = brState[1]
+    def recompensa(self, mystate):
+        if self.isCheckMate(mystate):
+            return 100
 
-        # Mirem si han matat la torre negra
-        if brState == None:
-            value += 50
-            fila = abs(filaBk - filaWk)
-            columna = abs(columnaWk - columnaBk)
-            distReis = min(fila, columna) + abs(fila - columna)
-            if distReis >= 3 and wrState != None:
-                filaR = abs(filaBk - filaWr)
-                columnaR = abs(columnaWr - columnaBk)
-                value += (min(filaR, columnaR) + abs(filaR - columnaR))/10
-            # Si som les blanques, com més aprop tinguem el nostre rei de l'altre, millor.
-            # Li restem 7 a la distància que hi ha entre els dos reis, ja que en un taulell d'escacs poden estar a una distància màxima de 7 moviments.
-            value += (7 - distReis)
-            #Si el rei negre està en una paret, prioritzem que estigui prop d'una cantonada, per així arraconar-lo.
-            if bkState[0] == 0 or bkState[0] == 7 or bkState[1] == 0 or bkState[1] == 7:
-                value += (abs(filaBk - 3.5) + abs(columnaBk - 3.5)) * 10
-            #Si no, només prioritzem que s'apropi a una paret, per així arribar al check mate.
-            else:
-                value += (max(abs(filaBk - 3.5), abs(columnaBk - 3.5))) * 10
+        return -1
 
-        # Han matat la torre blanca. A dins del mètode es considerem les mateixes condicions que en l'apartat anterior però amb els valors invertits.
-        if wrState == None:
-            value += -50
-            fila = abs(filaBk - filaWk)
-            columna = abs(columnaWk - columnaBk)
-            distReis = min(fila, columna) + abs(fila - columna)
+    def maxQValue(self, stringState):
+        if stringState not in self.qTable.keys():
+            return 0
+        maxQ = -100000
+        dictState = self.qTable[stringState]
+        for nextString in dictState.keys():
+            maxQ = max(maxQ, dictState[nextString])
+        return maxQ
 
-            if distReis >= 3 and brState != None:
-                filaR = abs(filaWk - filaBr)
-                columnaR = abs(columnaBr - columnaWk)
-                value -= (min(filaR, columnaR) + abs(filaR - columnaR)) / 10
-            # Si som les blanques, com més aprop tinguem el nostre rei de l'altre, millor.
-            # Li restem 7 a la distància que hi ha entre els dos reis, ja que en un taulell d'escacs poden estar a una distància màxima de 7 moviments.
-            value += (-7 + distReis)
+    def epsilonState(self, epsilon, listStates, currentState):
+        x = random.randrange(0,1)
+        if x < epsilon:
+            n = random.randint(0, len(listStates) - 1)
+            return listStates[n]
+        else:
+            listBestStates = []
+            maxValue = -10000
+            currentDict = self.qTable[currentState]
+            error = 0.01
+            for state in listStates:
+                qValue = currentDict[state]
+                if qValue <= maxValue + error and qValue >= maxValue - error:
+                    listBestStates.append(state)
+                elif qValue > maxValue:
+                    maxValue = qValue
+                    listBestStates.clear()
+                    listBestStates.append(state)
 
-            if wkState[0] == 0 or wkState[0] == 7 or wkState[1] == 0 or wkState[1] == 7:
-                value -= (abs(filaWk - 3.5) + abs(columnaWk - 3.5)) * 10
-            else:
-                value -= (max(abs(filaWk - 3.5), abs(columnaWk - 3.5))) * 10
+            n = random.randint(0, len(listBestStates) - 1)
+            return listBestStates[n]
 
-        # S'està fent un check a les negres
-        if self.isWatchedBk(currentState):
-            value += 20
 
-        # S'està fent un check a les blanques
-        if self.isWatchedWk(currentState):
-            value += -20
 
-        # Si són les negres, els valors negatius, són positius
-        if not color:
-            value = (-1) * value
+    def QLearning1(self, epsilon, gamma, alpha):
+        currentState = self.getCurrentStateW()
+        currentString = self.stateToString(currentState)
+        initialState = currentState
+        self.qTable[currentString] = {}
 
-        return value
+        for iteration in range (1000):
+            checkMate = False
+            while not checkMate:
+                if currentString not in self.qTable.keys():
+                    self.qTable[currentString] = {}
+                listNextStates = []
+                for state in self.getListNextStatesW(currentState):
+                    if state[0][0:2] != [0,4] and state[1][0:2] != [0,4]:
+                        listNextStates.append(state)
 
-    def minimaxGame(self, depthWhite,depthBlack):
-        currentState = self.getCurrentState()
-        # Comprovem que l'estat donat no sigui un estat final.
-        if self.isWhiteInCheckMate(currentState):
-            return False
-        if self.isWatchedBk(currentState):
-            return True
-        copyState = self.copyState(currentState)
-        self.listVisitedSituations.append((False, copyState))
-        colorWin = None
-        for i in range(50):
-            currentState = self.getCurrentState()
-            # Toca moure a les blanques
-            if i % 2 == 0:
-                if not self.minimaxWhite(currentState, depthWhite):
-                    break
-                if self.isBlackInCheckMate(currentState):
-                    colorWin = True
-                    break
-            # Toca moure a les negres
-            else:
-                if not self.minimaxBlack(currentState, depthBlack):
-                    break
-                if self.isWhiteInCheckMate(currentState):
-                    colorWin = False
-                    break
 
+                nextState = self.epsilonState(epsilon, listNextStates, currentState)
+                nextString = self.stateToString(nextState)
+
+                if nextString not in self.qTable[currentString].keys():
+                    qValue = 0
+                else:
+                    qValue = self.qTable[currentString][nextString]
+
+                recompensa = self.recompensa(nextState)
+                if recompensa != -1:
+                    qValue = recompensa
+                else:
+                    sample = recompensa + gamma*self.maxQValue(nextString)
+                    qValue = (1-alpha)*qValue + alpha*sample
+
+                self.qTable[currentString][nextString] = qValue
+                self.newBoardSim(nextState+[[0,4,12]])
+                #self.chess.boardSim.print_board()
+                currentState, currentString = nextState, nextString
+                if recompensa != -1:
+                    checkMate = True
+
+        print(self.qTable)
+        self.reconstructPath(initialState)
+
+    def reconstructPath(self, initialState):
+        currentState = initialState
+        currentString = self.stateToString(initialState)
+        checkMate = False
+        path = [initialState]
+        while not checkMate:
+            currentDict = self.qTable[currentString]
+            maxQ = -100000
+            maxState = None
+            for stateString in currentDict.keys():
+                qValue = currentDict[stateString]
+                if maxQ < qValue:
+                    maxQ = qValue
+                    maxState = stateString
+            state = self.stringToState(maxState)
+            path.append(state)
+            movement = self.getMovement(currentState,state)
+            self.chess.move(movement[0],movement[1])
             self.chess.board.print_board()
+            currentString = maxState
+            currentState = state
+            if self.isCheckMate(state):
+                checkMate = True
 
-        self.chess.board.print_board()
-        return colorWin
+        print(path)
 
-    def minimaxWhite(self, state, depthMax):
-        nextState = self.maxValueWhite(state, 0, depthMax)
-        copyState = self.copyState(nextState)
-        if self.isVisitedSituation(True, copyState):
-            return False
-        self.listVisitedSituations.append((True, copyState))
-        # Veiem quina peça s'ha mogut
-        movement = self.getMovement(state, nextState)
-        # La movem al taulell "definitiu"
-        self.chess.move(movement[0], movement[1])
-        return True
-
-    def maxValueWhite(self, currentState, depth, depthMax):
-        # Últim moviment ha estat de les negres.
-        #Mirem si el rei blanc no té possibles moviments
-        if self.allWkMovementsWatched(currentState):
-            #En cas que estigui en check, és checkmate
-            if self.isWatchedWk(currentState):
-                return -1000
-            #Si no, tindrem un empat
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, True)
-
-        maxValue = -10000
-        maxState = None
-        whiteState = self.getWhiteState(currentState)
-        blackState = self.getBlackState(currentState)
-        brState = self.getPieceState(currentState, 8)
-        for state in self.getListNextStatesW(whiteState):
-            newBlackState = blackState.copy()
-            # Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
-            if brState != None and brState[0:2] == state[0][0:2]:
-                newBlackState.remove(brState)
-            #Ara, state, serà el nostre estat actual
-            state = state + newBlackState
-            #No considerem els moviments on el rei blanc estigui vigilat
-            if not self.isWatchedWk(state):
-                valueSate = self.minValueWhite(state, depth + 1, depthMax)
-                #En cas que sigui un bon estat, actualitzem el valor màxim i el millor successor de la branca
-                if valueSate > maxValue:
-                    maxValue = valueSate
-                    maxState = state
-        # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
-        # És el millor possible dels estats visitats, segons el minimax.
-        if depth == 0:
-            return maxState
-        return maxValue
-
-    def minValueWhite(self, currentState, depth, depthMax):
-        # Últim moviment ha estat de les blanques
-        #Mirem si tenim un checkmate o empat
-        if self.allBkMovementsWatched(currentState):
-            if self.isWatchedBk(currentState):
-                #Prioritzem que s'arribi al checkmate amb els menors moviments possibles
-                return 10000 / depth
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, True)
-        blackState = self.getBlackState(currentState)
-        whiteState = self.getWhiteState(currentState)
-        wrState = self.getPieceState(currentState, 2)
-
-        minValue = 10000
-        for state in self.getListNextStatesB(blackState):
-            newWhiteState = whiteState.copy()
-            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
-            if wrState != None and wrState[0:2] == state[0][0:2]:
-                newWhiteState.remove(wrState)
-            state = state + newWhiteState
-            #No considerem els moviments on el rei negre estigui vigilat
-            if not self.isWatchedBk(state):
-                #Actualitzem valor mínim
-                minValue = min(minValue, self.maxValueWhite(state, depth + 1, depthMax))
-
-        return minValue
-
-    def minimaxBlack(self, state, depthMax):
-        nextState = self.maxValueBlack(state, 0, depthMax)
-        copyState = self.copyState(nextState)
-        if self.isVisitedSituation(True, copyState):
-            return False
-        self.listVisitedSituations.append((True, copyState))
-        # Veiem quina peça s'ha mogut
-        movement = self.getMovement(state, nextState)
-        # La movem al taulell "definitiu"
-        self.chess.move(movement[0], movement[1])
-        return True
-
-    def maxValueBlack(self, currentState, depth, depthMax):
-        #Aquest mètode és equivalent a maxValueWhite però amb valors i peces invertits.
-        #Per major comprensió del codi, recomanem mirar el mètode esmentat, que està comentat.
-        # Últim moviment ha estat de les blanques.
-        if self.allBkMovementsWatched(currentState):
-            if self.isWatchedBk(currentState):
-                return -1000
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, False)
-
-        maxValue = -10000
-        maxState = None
-        blackState = self.getBlackState(currentState)
-        whiteState = self.getWhiteState(currentState)
-        wrState = self.getPieceState(currentState, 2)
-        for state in self.getListNextStatesB(blackState):
-            newWhiteState = whiteState.copy()
-            # Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
-            if wrState != None and wrState[0:2] == state[0][0:2]:
-                newWhiteState.remove(wrState)
-            state = state + newWhiteState
-            if not self.isWatchedBk(state):
-                valueSate = self.minValueBlack(state, depth + 1, depthMax)
-                if valueSate > maxValue:
-                    maxValue = valueSate
-                    maxState = state
-        # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
-        # És el millor possible dels estats visitats, segons el minimax.
-        if depth == 0:
-            return maxState
-        return maxValue
-
-    def minValueBlack(self, currentState, depth, depthMax):
-        #Aquest mètode és equivalent a minValueWhite però amb valors i peces invertits.
-        #Per major comprensió del codi, recomanem mirar el mètode esmentat, que està comentat.
-        # Últim moviment ha estat de les negres
-        if self.allWkMovementsWatched(currentState):
-            if self.isWatchedWk(currentState):
-                return 10000 / depth
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, False)
-        whiteState = self.getWhiteState(currentState)
-        blackState = self.getBlackState(currentState)
-        brState = self.getPieceState(currentState, 8)
-
-        minValue = 10000
-        for state in self.getListNextStatesW(whiteState):
-            newBlackState = blackState.copy()
-            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
-            if brState != None and brState[0:2] == state[0][0:2]:
-                newBlackState.remove(brState)
-            state = state + newBlackState
-            if not self.isWatchedWk(state):
-                minValue = min(minValue, self.maxValueBlack(state, depth + 1, depthMax))
-
-        return minValue
-
-    def alphaBetaPoda(self, depthWhite,depthBlack):
-        currentState = self.getCurrentState()
-        #Comprovem que l'estat donat no sigui un estat final.
-        if self.isWhiteInCheckMate(currentState):
-            return False
-        if self.isWatchedBk(currentState):
-            return True
-        copyState = self.copyState(currentState)
-        self.listVisitedSituations.append((False, copyState))
-        colorWin = None
-        for i in range(50):
-            currentState = self.getCurrentState()
-            # Toca moure a les blanques
-            if i % 2 == 0:
-                if not self.podaWhite(currentState, depthWhite):
-                    break
-                if self.isBlackInCheckMate(currentState):
-                    colorWin = True
-                    break
-            # Toca moure a les negres
-            else:
-                if not self.podaBlack(currentState, depthBlack):
-                    break
-                if self.isWhiteInCheckMate(currentState):
-                    colorWin = False
-                    break
-
-            self.chess.board.print_board()
-
-        self.chess.board.print_board()
-        return colorWin
-
-    def podaWhite(self, state, depthMax):
-        alpha = -10000
-        beta = 10000
-        nextState = self.podaMaxValueWhite(state, 0, depthMax, alpha, beta)
-        copyState = self.copyState(nextState)
-        if self.isVisitedSituation(True, copyState):
-            return False
-        self.listVisitedSituations.append((True, copyState))
-        #Veiem quina peça s'ha mogut
-        movement = self.getMovement(state, nextState)
-        #La movem al taulell "definitiu"
-        self.chess.move(movement[0], movement[1])
-        return True
-
-    def podaMaxValueWhite(self, currentState, depth, depthMax, alpha, beta):
-        # Últim moviment ha estat de les negres.
-        #Mirem si el rei blanc no té possibles moviments
-        if self.allWkMovementsWatched(currentState):
-            #En cas que estigui en check, és checkmate
-            if self.isWatchedWk(currentState):
-                return -1000
-            #Si no, tindrem un empat
-            return 0
-        #Quan arribem a una fulla, calculem l'heurística
-        if depth == depthMax:
-            return self.heuristica(currentState, True)
-
-        maxValue = -10000
-        maxState = None
-        whiteState = self.getWhiteState(currentState)
-        blackState = self.getBlackState(currentState)
-        brState = self.getPieceState(currentState, 8)
-        for state in self.getListNextStatesW(whiteState):
-            newBlackState = blackState.copy()
-            # Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
-            if brState != None and brState[0:2] == state[0][0:2]:
-                newBlackState.remove(brState)
-            #Ara, state, serà el nostre estat actual
-            state = state + newBlackState
-            #No considerem els moviments on el rei blanc estigui vigilat
-            if not self.isWatchedWk(state):
-                valueSate = self.podaMinValueWhite(state, depth + 1, depthMax, alpha, beta)
-                #En cas que sigui un bon estat, actualitzem el valor màxim i el millor successor de la branca
-                if valueSate > maxValue:
-                    maxValue = valueSate
-                    maxState = state
-                #Fem poda
-                if maxValue >= beta:
-                    break
-                alpha = max(alpha, maxValue)
-
-        # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
-        # És el millor possible dels estats visitats, segons el minimax.
-        if depth == 0:
-            return maxState
-        return maxValue
-
-    def podaMinValueWhite(self, currentState, depth, depthMax, alpha, beta):
-        # Últim moviment ha estat de les blanques
-        #Mirem si tenim un checkmate o empat
-        if self.allBkMovementsWatched(currentState):
-            if self.isWatchedBk(currentState):
-                #Prioritzem que s'arribi al checkmate amb els menors moviments possibles
-                return 10000 / depth
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, True)
-        blackState = self.getBlackState(currentState)
-        whiteState = self.getWhiteState(currentState)
-        wrState = self.getPieceState(currentState, 2)
-
-        minValue = 10000
-        for state in self.getListNextStatesB(blackState):
-            newWhiteState = whiteState.copy()
-            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
-            if wrState != None and wrState[0:2] == state[0][0:2]:
-                newWhiteState.remove(wrState)
-            state = state + newWhiteState
-            #No considerem els moviments on el rei negre estigui vigilat
-            if not self.isWatchedBk(state):
-                minValue = min(minValue, self.podaMaxValueWhite(state, depth + 1, depthMax, alpha, beta))
-                #Fem poda
-                if minValue <= alpha:
-                    break
-
-                beta = min(beta, minValue)
-
-        return minValue
-
-    def podaBlack(self, state, depthMax):
-        alpha = -10000
-        beta = 10000
-        nextState = self.podaMaxValueBlack(state, 0, depthMax, alpha, beta).copy()
-        copyState = self.copyState(nextState)
-        if self.isVisitedSituation(False, copyState):
-            return False
-        self.listVisitedSituations.append((False, copyState))
-        #Mirem quina peça s'ha mogut i la movem al taulell
-        movement = self.getMovement(state, nextState)
-        self.chess.move(movement[0], movement[1])
-        return True
-
-    def podaMaxValueBlack(self, currentState, depth, depthMax, alpha, beta):
-        #Aquest mètode és equivalent a podaMaxValueWhite, però amb els valors i peces invertits
-        #Per major comprensió del codi, recomanem mirar el mètode esmentat, que està comentat.
-        # Últim moviment ha estat de les blanques.
-        if self.allBkMovementsWatched(currentState):
-            if self.isWatchedBk(currentState):
-                return -1000
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, False)
-
-        maxValue = -10000
-        maxState = None
-        whiteState = self.getWhiteState(currentState)
-        blackState = self.getBlackState(currentState)
-        wrState = self.getPieceState(currentState, 2)
-        for state in self.getListNextStatesB(blackState):
-            newWhiteState = whiteState.copy()
-            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, treiem l'estat de la torre blanca
-            if wrState != None and wrState[0:2] == state[0][0:2]:
-                newWhiteState.remove(wrState)
-            state = state + newWhiteState
-            if not self.isWatchedBk(state):
-                valueSate = self.podaMinValueBlack(state, depth + 1, depthMax, alpha, beta)
-
-                if valueSate > maxValue:
-                    maxValue = valueSate
-                    maxState = state
-
-                if maxValue >= beta:
-                    break
-                alpha = max(alpha, maxValue)
-
-        # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
-        # És el millor possible dels estats visitats, segons el minimax.
-        if depth == 0:
-            return maxState
-        return maxValue
-
-    def podaMinValueBlack(self, currentState, depth, depthMax, alpha, beta):
-        #Aquest mètode és equivalent a podaMinValueWhite, però amb els valors i peces invertits
-        #Per major comprensió del codi, recomanem mirar el mètode esmentat, que està comentat.
-        # Últim moviment ha estat de les negres
-        if self.allWkMovementsWatched(currentState):
-            if self.isWatchedWk(currentState):
-                return 10000 / depth
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, False)
-        blackState = self.getBlackState(currentState)
-        whiteState = self.getWhiteState(currentState)
-        brState = self.getPieceState(currentState, 8)
-
-        minValue = 10000
-        for state in self.getListNextStatesW(whiteState):
-            newBlackState = blackState.copy()
-            # Comprovem si s'han menjat la torre negra. En cas afirmatiu, la treiem de l'estat.
-            if brState != None and brState[0:2] == state[0][0:2]:
-                newBlackState.remove(brState)
-            state = state + newBlackState
-            if not self.isWatchedWk(state):
-                minValue = min(minValue, self.podaMaxValueBlack(state, depth + 1, depthMax, alpha, beta))
-
-                if minValue <= alpha:
-                    break
-
-                beta = min(beta, minValue)
-
-        return minValue
-
-
-    def mitjana(self, values):
-        sum = 0
-        N = len(values)
-        for i in range(N):
-            sum += values[i]
-
-        return sum / N
-
-    def desviacio(self, values, mitjana):
-        sum = 0
-        N = len(values)
-
-        for i in range(N):
-            sum += pow(values[i] - mitjana, 2)
-
-        return pow(sum / N, 1 / 2)
-
-    def calculateValue(self, values):
-        if len(values) == 0:
-            return 0
-        mitjana = self.mitjana(values)
-        desviacio = self.desviacio(values, mitjana)
-        #Si la desviació és 0, no podem estandaritzar els valors, ja que tots els valors són iguals, per tant la probabilitat serà equiprobable.
-        if desviacio == 0:
-            #Retornem un valor qualsevol
-            return values[0]
-
-        esperanca = 0
-        sum = 0
-        N = len(values)
-        for i in range(N):
-            #Normalitzem el valor, amb la mitjana i desviació
-            normalizedValues = (values[i] - mitjana) / desviacio
-            #Passem els valors a positiu amb la funció e^(-x), on x és el valor estandaritzat.
-            positiveValue = pow(1 / math.e, normalizedValues)
-            #Aquí anem calculant l'esperança, que al final serà el valor de esperanca/sum.
-            #Els nostres positiveValue/sum representen les probabilitats per cada valor.
-            #Com més alt sigui el value, més probabilitat tindrà.
-            esperanca += positiveValue * values[i]
-            sum += positiveValue
-
-        return esperanca / sum
-
-    def expectimax(self, depthWhite, depthBlack):
-        currentState = self.getCurrentState()
-        # Comprovem que l'estat donat no sigui un estat final.
-        if self.isWhiteInCheckMate(currentState):
-            return False
-        if self.isWatchedBk(currentState):
-            return True
-        copyState = self.copyState(currentState)
-        self.listVisitedSituations.append((False, copyState))
-        colorWin = None
-        for i in range(50):
-            currentState = self.getCurrentState()
-            # Toca moure a les blanques
-            if i % 2 == 0:
-                if not self.expectimaxWhite(currentState, depthWhite):
-                    break
-                if self.isBlackInCheckMate(currentState):
-                    colorWin = True
-                    break
-            # Toca moure a les negres
-            else:
-                if not self.expectimaxBlack(currentState, depthBlack):
-                    break
-                if self.isWhiteInCheckMate(currentState):
-                    colorWin = False
-                    break
-
-            self.chess.board.print_board()
-
-        self.chess.board.print_board()
-        return colorWin
-
-    def expectimaxWhite(self, state, depthMax):
-        nextState = self.expMaxValueWhite(state, 0, depthMax)
-        copyState = self.copyState(nextState)
-        if self.isVisitedSituation(True, copyState):
-            return False
-        self.listVisitedSituations.append((True, copyState))
-        # Veiem quina peça s'ha mogut
-        movement = self.getMovement(state, nextState)
-        # La movem al taulell "definitiu"
-        self.chess.move(movement[0], movement[1])
-        return True
-
-    def expMaxValueWhite(self, currentState, depth, depthMax):
-        #Aquest mètode és el mateix que el maxValueWhite.
-        # Últim moviment ha estat de les negres.
-        if self.allWkMovementsWatched(currentState):
-            if self.isWatchedWk(currentState):
-                return -1000
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, True)
-
-        maxValue = -10000
-        maxState = None
-        whiteState = self.getWhiteState(currentState)
-        blackState = self.getBlackState(currentState)
-        brState = self.getPieceState(currentState, 8)
-        for state in self.getListNextStatesW(whiteState):
-            newBlackState = blackState.copy()
-            # Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
-            if brState != None and brState[0:2] == state[0][0:2]:
-                newBlackState.remove(brState)
-            state = state + newBlackState
-            if not self.isWatchedWk(state):
-                valueSate = self.expValueWhite(state, depth + 1, depthMax)
-
-                if valueSate > maxValue:
-                    maxValue = valueSate
-                    maxState = state
-
-        # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
-        # És el millor possible dels estats visitats, segons el minimax.
-        if depth == 0:
-            return maxState
-        return maxValue
-
-    def expValueWhite(self, currentState, depth, depthMax):
-        # Últim moviment ha estat de les blanques
-        if self.allBkMovementsWatched(currentState):
-            if self.isWatchedBk(currentState):
-                return 10000 / depth
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, True)
-        blackState = self.getBlackState(currentState)
-        whiteState = self.getWhiteState(currentState)
-        wrState = self.getPieceState(currentState, 2)
-
-        values = []
-        for state in self.getListNextStatesB(blackState):
-            newWhiteState = whiteState.copy()
-            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
-            if wrState != None and wrState[0:2] == state[0][0:2]:
-                newWhiteState.remove(wrState)
-            state = state + newWhiteState
-            if not self.isWatchedBk(state):
-                #Guardem tots els valors de la branca en values
-                value = self.expMaxValueWhite(state, depth + 1, depthMax)
-                values.append(value)
-        #Assignem probabilitats a cada valor i calculem l'esperança
-        return self.calculateValue(values)
-
-    def expectimaxBlack(self, state, depthMax):
-        nextState = self.expMaxValueBlack(state, 0, depthMax)
-        copyState = self.copyState(nextState)
-        if self.isVisitedSituation(True, copyState):
-            return False
-        self.listVisitedSituations.append((True, copyState))
-        # Veiem quina peça s'ha mogut
-        movement = self.getMovement(state, nextState)
-        # La movem al taulell "definitiu"
-        self.chess.move(movement[0], movement[1])
-        return True
-
-    def expMaxValueBlack(self, currentState, depth, depthMax):
-        #Aquest mètode és el mateix que el maxValueBlack.
-
-        # Últim moviment ha estat de les blanques.
-        if self.allBkMovementsWatched(currentState):
-            if self.isWatchedBk(currentState):
-                return -1000
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, False)
-
-        maxValue = -10000
-        maxState = None
-        blackState = self.getBlackState(currentState)
-        whiteState = self.getWhiteState(currentState)
-        wrState = self.getPieceState(currentState, 2)
-        for state in self.getListNextStatesB(blackState):
-            newWhiteState = whiteState.copy()
-            # Comprovem si s'han menjat la torre negra. En cas afirmatiu, treiem l'estat de la torre negra
-            if wrState != None and wrState[0:2] == state[0][0:2]:
-                newWhiteState.remove(wrState)
-            state = state + newWhiteState
-            if not self.isWatchedBk(state):
-                valueSate = self.expValueBlack(state, depth + 1, depthMax)
-                if valueSate > maxValue:
-                    maxValue = valueSate
-                    maxState = state
-
-        # Si depth == 0, es retorna l'estat que representa el següent moviment que faran les blanques.
-        # És el millor possible dels estats visitats, segons el minimax.
-        if depth == 0:
-            return maxState
-        return maxValue
-
-    def expValueBlack(self, currentState, depth, depthMax):
-        # Últim moviment ha estat de les negres
-        if self.allWkMovementsWatched(currentState):
-            if self.isWatchedWk(currentState):
-                return 10000 / depth
-            return 0
-
-        if depth == depthMax:
-            return self.heuristica(currentState, False)
-        whiteState = self.getWhiteState(currentState)
-        blackState = self.getBlackState(currentState)
-        brState = self.getPieceState(currentState, 8)
-
-        values = []
-        for state in self.getListNextStatesW(whiteState):
-            newBlackState = blackState.copy()
-            # Comprovem si s'han menjat la torre blanca. En cas afirmatiu, la treiem de l'estat
-            if brState != None and brState[0:2] == state[0][0:2]:
-                newBlackState.remove(brState)
-            state = state + newBlackState
-            if not self.isWatchedWk(state):
-                #Guardem tots els valors de la branca en values
-                values.append(self.expMaxValueBlack(state, depth + 1, depthMax))
-
-        #Assignem probabilitats a cada valor i calculem l'esperança
-        return self.calculateValue(values)
-
-    def expectWhitePodaBlack(self, depthWhite, depthBlack):
-        currentState = self.getCurrentState()
-        # Comprovem que l'estat donat no sigui un estat final.
-        if self.isWhiteInCheckMate(currentState):
-            return False
-        if self.isWatchedBk(currentState):
-            return True
-        copyState = self.copyState(currentState)
-        self.listVisitedSituations.append((False, copyState))
-        colorWin = None
-        for i in range(50):
-            currentState = self.getCurrentState()
-            # Toca moure a les blanques
-            if i % 2 == 0:
-                if not self.expectimaxWhite(currentState, depthWhite):
-                    break
-                if self.isBlackInCheckMate(currentState):
-                    colorWin = True
-                    break
-            # Toca moure a les negres
-            else:
-                if not self.podaBlack(currentState, depthBlack):
-                    break
-                if self.isWhiteInCheckMate(currentState):
-                    colorWin = False
-                    break
-
-            self.chess.board.print_board()
-
-        self.chess.board.print_board()
-        return colorWin
-
-    def expectBlackPodaWhite(self, depthWhite, depthBlack):
-        currentState = self.getCurrentState()
-        # Comprovem que l'estat donat no sigui un estat final.
-        if self.isWhiteInCheckMate(currentState):
-            return False
-        if self.isWatchedBk(currentState):
-            return True
-        copyState = self.copyState(currentState)
-        self.listVisitedSituations.append((False, copyState))
-        colorWin = None
-        for i in range(50):
-            currentState = self.getCurrentState()
-            # Toca moure a les blanques
-            if i % 2 == 0:
-                if not self.podaWhite(currentState, depthWhite):
-                    break
-                if self.isBlackInCheckMate(currentState):
-                    colorWin = True
-                    break
-            # Toca moure a les negres
-            else:
-                if not self.expectimaxBlack(currentState, depthBlack):
-                    break
-                if self.isWhiteInCheckMate(currentState):
-                    colorWin = False
-                    break
-
-            self.chess.board.print_board()
-
-        self.chess.board.print_board()
-        return colorWin
 
 def translate(s):
     """
@@ -1099,10 +486,12 @@ if __name__ == "__main__":
     # intiialize board
     TA = np.zeros((8, 8))
 
+    numExercici = 1
+
     #Configuració inicial del taulell
     TA[7][0] = 2
     TA[7][4] = 6
-    TA[0][7] = 8
+    #TA[0][7] = 8
     TA[0][4] = 12
 
     # initialise board
@@ -1112,97 +501,7 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    #Per provar l'execució d'un exercici en concret, s'utilitzen les variables numExercici i apartat.
-    numExercici = 3
-    apartat = "b"
-
-    #Tots els exercicis només els executem 1 cop, ja que els resultats són sempre els mateixos
-    if numExercici == 1:
-        aichess.minimaxGame(4,4)
-
-    if numExercici == 3:
-        aichess.alphaBetaPoda(4,4)
-
-    resultats = []
-
-    if numExercici == 2 or numExercici == 4:
-        #El resultat amb l'algorisme poda alpha beta és el mateix que el de minimax però més ràpid.
-        for i in range(1,6):
-            resultats.append([])
-            for j in range(1,6):
-                aichess = Aichess(TA, True)
-                aichess.chess.boardSim.print_board()
-                resultatPoda = aichess.alphaBetaPoda(i,j)
-                print(resultatPoda)
-                if resultatPoda == None:
-                    resultats[i-1].append("-")
-                elif resultatPoda:
-                    resultats[i-1].append("W")
-                else:
-                    resultats[i-1].append("B")
-
-        for i in range(6):
-            tmpStr = "| "
-            for j in range(6):
-                if i == 0:
-                    tmpStr += str(j) + " | "
-                elif j == 0:
-                    tmpStr += str(i) + " | "
-                else:
-                    tmpStr += resultats[i-1][j-1] + " | "
-            print(tmpStr)
-
-    if numExercici == 5 and apartat == "a":
-        for i in range(1,5):
-            resultats.append([])
-            for j in range(1,5):
-                aichess = Aichess(TA, True)
-                aichess.chess.boardSim.print_board()
-                resultatExecucio = aichess.expectWhitePodaBlack(i,j)
-                if resultatExecucio == None:
-                    resultats[i-1].append("-")
-                elif resultatExecucio:
-                    resultats[i-1].append("W")
-                else:
-                    resultats[i-1].append("B")
-                print(resultats)
+    aichess.QLearning1(0.4, 0.9, 0.1)
 
 
-        for i in range(5):
-            tmpStr = "| "
-            for j in range(5):
-                if i == 0:
-                    tmpStr += str(j) + " | "
-                elif j == 0:
-                    tmpStr += str(i) + " | "
-                else:
-                    tmpStr += resultats[i-1][j-1] + " | "
-            print(tmpStr)
-
-    if numExercici == 5 and apartat == "b":
-        for i in range(1,5):
-            resultats.append([])
-            for j in range(1,5):
-                aichess = Aichess(TA, True)
-                aichess.chess.boardSim.print_board()
-                resultatExecucio = aichess.expectBlackPodaWhite(i,j)
-                if resultatExecucio == None:
-                    resultats[i-1].append("-")
-                elif resultatExecucio:
-                    resultats[i-1].append("W")
-                else:
-                    resultats[i-1].append("B")
-                print(resultats)
-
-
-        for i in range(5):
-            tmpStr = "| "
-            for j in range(5):
-                if i == 0:
-                    tmpStr += str(j) + " | "
-                elif j == 0:
-                    tmpStr += str(i) + " | "
-                else:
-                    tmpStr += resultats[i-1][j-1] + " | "
-            print(tmpStr)
 
