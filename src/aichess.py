@@ -581,7 +581,7 @@ class Aichess():
             #Estem en empat
             else:
                 #Retornem recompensa i com que és un estat terminal, True.
-                return 0, True
+                return -1000, True
 
         if self.allWkMovementsWatched(currentState) and not torn:
             # Si el rei blanc està en check mate
@@ -591,7 +591,7 @@ class Aichess():
             # Estem en empat
             else:
                 # Retornem recompensa i com que és un estat terminal, True.
-                return 0, True
+                return -1000, True
 
         if brState != None and wrState != None:
             #No ens interessen les dues torres vives.
@@ -601,12 +601,18 @@ class Aichess():
         if brState == None and wrState == None:
             previousBrState = self.getPieceState(previousState,8)
             #Valorem positivament matar la torre enemiga, si nosaltres ja no tenim torre.
-            if previousBrState != None and torn:
-                return 50, True
+            if previousBrState != None:
+                if torn:
+                    return 50, True
+                else:
+                    return -1000, True
 
             previousWrState = self.getPieceState(previousState,2)
-            if previousWrState != None and not torn:
-                return 50, True
+            if previousWrState != None:
+                if not torn:
+                    return 50, True
+                else:
+                    return -1000, True
 
 
         if brState == None:
@@ -772,6 +778,7 @@ class Aichess():
             # Si no, reiniciem el comptador.
             else:
                 numCaminsConvergents = 0
+            self.chess.boardSim.print_board()
             self.newBoardSim(initialState)
             currentState = initialState
         self.reconstructPathBW(initialState)
@@ -812,7 +819,7 @@ if __name__ == "__main__":
     #Configuració inicial del taulell
     TA[7][0] = 2
     TA[7][4] = 6
-    TA[0][7] = 8
+    #TA[0][7] = 8
     TA[0][4] = 12
 
     # initialise board
