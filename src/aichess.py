@@ -391,7 +391,40 @@ class Aichess():
         return maxQ
 
     def epsilonState(self, epsilon, listStates, currentState, dictQValues):
-        x = random.randrange(0,1)
+        x = random.uniform(0,1)
+        #Fem exploració amb probabilitat epsilon
+        if x < epsilon:
+            n = random.randint(0, len(listStates) - 1)
+            return listStates[n]
+        #Fem exploració amb probabilitat 1 - epsilon
+        else:
+            listBestStates = []
+            maxValue = -10000
+            currentDict = dictQValues[currentState]
+            visitedStatesString = currentDict.keys()
+            error = 0.01
+            for state in listStates:
+                stateString = self.stateToString(state)
+                #Si l'estat no ha estat visitat, l'inicialitzem
+                if stateString not in visitedStatesString:
+                    currentDict[stateString] = 0
+                qValue = currentDict[stateString]
+                #Valorem si el valor es troba dins d'un marge d'error del major valor trobat
+                #En cas afirmatiu, l'afegim als millors estats possibles
+                if qValue <= maxValue + error and qValue >= maxValue - error:
+                    listBestStates.append(state)
+                #Si el valor está fora de rang i és major que el major valor trobat, passa a ser el valor
+                #màxim.
+                elif qValue > maxValue:
+                    maxValue = qValue
+                    listBestStates.clear()
+                    listBestStates.append(state)
+
+            n = random.randint(0, len(listBestStates) - 1)
+            return listBestStates[n]
+
+    def epsilonStateBW(self, epsilon, listStates, currentState, dictQValues):
+        x = random.uniform(0,1)
         #Fem exploració amb probabilitat epsilon
         if x < epsilon:
             n = random.randint(0, len(listStates) - 1)
@@ -410,6 +443,8 @@ class Aichess():
                     maxValue = qValue
                     listBestStates.clear()
                     listBestStates.append(state)
+                if qValue < 0:
+                    listStates.pop(state)
 
             n = random.randint(0, len(listBestStates) - 1)
             return listBestStates[n]
@@ -448,18 +483,12 @@ class Aichess():
                 #Triem un dels estats mitjançant exploració o explotació.
                 nextState = self.epsilonState(epsilon, listNextStates, currentState, self.qTable)
                 nextString = self.stateToString(nextState)
-                #Si no l'hem visitat, el seu Q-value inicial és 0
-                if nextString not in self.qTable[currentString].keys():
-                    qValue = 0
-                else:
-                    qValue = self.qTable[currentString][nextString]
+                qValue = self.qTable[currentString][nextString]
                 #Obtenim la recompensa associada a l'estat nextState
                 recompensa = self.recompensa(nextState)
                 #Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                 #Ja que és un estat terminal.
                 if recompensa != -1:
-                    if qValue == recompensa:
-                        break
                     qValue = recompensa
                 else:
                     #Obtenim el valor de la sample i del Q-value
@@ -642,7 +671,9 @@ class Aichess():
 
         initialState = self.getCurrentState()
         currentState = initialState
+        xState = initialState
         currentString = self.BWStateToString(currentState)
+        xString = currentString
         #Restringim el número de moviments per cada partida.
         numMaxMoviments = 200
 
@@ -650,8 +681,13 @@ class Aichess():
         numIteracions = 0
         numCaminsConvergents = 0
 
-        while numCaminsConvergents < 10:
+        while numIteracions < 500:
             numIteracions += 1
+            if numIteracions > 2:
+                print(self.qTableWhites[xString])
+            if numIteracions == 99:
+                self.reconstructPathBW(xState)
+                initialState = [[1,0,2],[3,4,6],[0,4,12]]
             checkMate = False
             numMovimentsBlanques = 0
             numMovimentsNegres = 0
@@ -694,8 +730,6 @@ class Aichess():
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                     # Ja que és un estat terminal.
                     if isFinalState:
-                        if qValue == recompensa:
-                            break
                         qValue = recompensa
                     else:
                         # Obtenim el valor de la sample i del Q-value
@@ -748,9 +782,6 @@ class Aichess():
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                     # Ja que és un estat terminal.
                     if isFinalState:
-                        #Si ja hem arribat a aquest estat, ja no cal actualitzar la taula i sortim.
-                        if qValue == recompensa:
-                            break
                         qValue = recompensa
                     else:
                         # Obtenim el valor de la sample i del Q-value
@@ -789,6 +820,8 @@ class Aichess():
 
             self.newBoardSim(initialState)
             currentState = initialState
+        self.reconstructPathBW(xState)
+        print("\n\n")
         self.reconstructPathBW(initialState)
         return 0
 
@@ -826,7 +859,7 @@ if __name__ == "__main__":
 
     #Configuració inicial del taulell
     TA[1][0] = 2
-    TA[3][4] = 6
+    TA[2][4] = 6
     #TA[0][7] = 8
     TA[0][4] = 12
 
@@ -838,7 +871,7 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    aichess.QlearningWhitesVsBlacks(0.4,0.9,0.1)
+    #aichess.QlearningWhitesVsBlacks(0.4,0.9,0.1)
     #aichess.Qlearning(0.3, 0.9, 0.1)
 
 
