@@ -695,7 +695,7 @@ class Aichess():
                         qValue = recompensa
                     else:
                         # Obtenim el valor de la sample i del Q-value
-                        sample = recompensa + gamma * self.maxQValue(nextString, self.qTableWhites)
+                        sample = recompensa - gamma * self.maxQValue(nextString, self.qTableBlacks)
                         deltaBlanques += sample - qValue
                         qValue = (1 - alpha) * qValue + alpha * sample
                     # Actualitzem la taula
@@ -750,7 +750,7 @@ class Aichess():
                         qValue = recompensa
                     else:
                         # Obtenim el valor de la sample i del Q-value
-                        sample = recompensa + gamma * self.maxQValue(nextString, self.qTableBlacks)
+                        sample = recompensa - gamma * self.maxQValue(nextString, self.qTableWhites)
                         deltaNegres += sample - qValue
                         qValue = (1 - alpha) * qValue + alpha * sample
                     # Actualitzem la taula
