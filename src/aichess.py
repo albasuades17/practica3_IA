@@ -602,6 +602,10 @@ class Aichess():
             numIteracions += 1
             checkMate = False
             numMovimentsCheckMate = 0
+            numMovimentsBlanques = 0
+            numMovimentsNegres = 0
+            deltaBlanques = 0
+            deltaNegres = 0
             delta = 0
             comptMoviments = 0
             while not checkMate and comptMoviments < numMaxMoviments:
@@ -644,7 +648,7 @@ class Aichess():
                     else:
                         # Obtenim el valor de la sample i del Q-value
                         sample = recompensa + gamma * self.maxQValue(nextString, self.qTableWhites)
-                        delta += sample - qValue
+                        deltaBlanques += sample - qValue
                         qValue = (1 - alpha) * qValue + alpha * sample
                     # Actualitzem la taula
                     self.qTableWhites[currentString][nextString] = qValue
@@ -657,6 +661,7 @@ class Aichess():
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
                         checkMate = True
+                    numMovimentsBlanques += 1
 
                 else:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -698,7 +703,7 @@ class Aichess():
                     else:
                         # Obtenim el valor de la sample i del Q-value
                         sample = recompensa + gamma * self.maxQValue(nextString, self.qTableBlacks)
-                        delta += sample - qValue
+                        deltaNegres += sample - qValue
                         qValue = (1 - alpha) * qValue + alpha * sample
                     # Actualitzem la taula
                     self.qTableBlacks[currentString][nextString] = qValue
@@ -710,16 +715,17 @@ class Aichess():
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
                         checkMate = True
+                    numMovimentsNegres += 1
 
                 torn = not torn
                 comptMoviments += 1
-                numMovimentsCheckMate += 1
 
             # Calculem la mitjana de la delta
-            mitjanaDelta = delta / numMovimentsCheckMate
-            print(numIteracions, mitjanaDelta)
+            mitjanaDeltaBlanques = deltaBlanques / numMovimentsBlanques
+            mitjanaDeltaNegres = deltaNegres / numMovimentsNegres
+            print(numIteracions, mitjanaDeltaBlanques, mitjanaDeltaNegres)
             # Si està en l'interval (-error, error), vol dir que aquest camí ha convergit.
-            if mitjanaDelta < error and mitjanaDelta > -error:
+            if mitjanaDeltaBlanques < error and mitjanaDeltaBlanques > -error and mitjanaDeltaNegres < error and mitjanaDeltaNegres > -error:
                 numCaminsConvergents += 1
             # Si no, reiniciem el comptador.
             else:
@@ -763,7 +769,7 @@ if __name__ == "__main__":
     #Configuració inicial del taulell
     TA[7][0] = 2
     TA[7][4] = 6
-    #TA[0][7] = 8
+    TA[0][7] = 8
     TA[0][4] = 12
 
     # initialise board
@@ -774,8 +780,8 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    #aichess.QlearningWhitesVsBlacks(0.3,0.9,0.1)
-    aichess.Qlearning(0.3, 0.9, 0.1)
+    aichess.QlearningWhitesVsBlacks(0.3,0.9,0.1)
+    #aichess.Qlearning(0.3, 0.9, 0.1)
 
 
 
