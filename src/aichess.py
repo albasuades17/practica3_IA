@@ -528,6 +528,45 @@ class Aichess():
 
         print(path)
 
+    def reconstructPathBW(self, initialState):
+        currentState = initialState
+        currentString = self.BWStateToString(initialState)
+        checkMate = False
+
+        #Afegim l'estat inicial
+        path = [initialState]
+        torn = False
+        while not checkMate:
+            torn = not torn
+            if torn:
+                currentDict = self.qTableWhites[currentString]
+            else:
+                currentDict = self.qTableBlacks[currentString]
+            maxQ = -100000
+            maxState = None
+            #Mirem quin és el següent estat que té major Q-value
+            for stateString in currentDict.keys():
+                qValue = currentDict[stateString]
+                if maxQ < qValue:
+                    maxQ = qValue
+                    maxState = stateString
+            state = self.stringToBWState(maxState)
+            #Quan l'obtenim l'agefim al path
+            path.append(state)
+            movement = self.getMovement(currentState,state)
+            #Fem el moviment corresponent
+            self.chess.move(movement[0],movement[1])
+            self.chess.board.print_board()
+            currentString = maxState
+            currentState = state
+            #Quan ja s'aconsegueix fer check mate, s'acaba l'execució.
+            if torn and self.isBlackInCheckMate(state):
+                checkMate = True
+            if not torn and self.isWhiteInCheckMate(state):
+                checkMate = True
+
+        print(path)
+
     def recompensaBW(self, currentState, previousState, torn):
         bkState = self.getPieceState(currentState, 12)
         wkState = self.getPieceState(currentState, 6)
@@ -584,6 +623,9 @@ class Aichess():
             else:
                 return -1, False
 
+    def towersAlive(self, currentState):
+        return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
+
     def QlearningWhitesVsBlacks(self, epsilon, alpha, gamma):
         checkMate = False
         torn = True
@@ -601,14 +643,14 @@ class Aichess():
         while numCaminsConvergents < 10:
             numIteracions += 1
             checkMate = False
-            numMovimentsCheckMate = 0
             numMovimentsBlanques = 0
             numMovimentsNegres = 0
             deltaBlanques = 0
             deltaNegres = 0
-            delta = 0
             comptMoviments = 0
-            while not checkMate and comptMoviments < numMaxMoviments:
+            while not checkMate:
+                if comptMoviments >= numMaxMoviments and self.towersAlive(currentState):
+                    break
                 if torn:
                     # Si no hem visitat l'estat, l'afegim a la q-table
                     if currentString not in self.qTableWhites.keys():
@@ -732,6 +774,7 @@ class Aichess():
                 numCaminsConvergents = 0
             self.newBoardSim(initialState)
             currentState = initialState
+        self.reconstructPathBW(initialState)
         return 0
 
 
