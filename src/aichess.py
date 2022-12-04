@@ -390,17 +390,23 @@ class Aichess():
             maxQ = max(maxQ, dictState[nextString])
         return maxQ
 
-    def epsilonState(self, epsilon, listStates, currentState, dictQValues):
+    def epsilonState(self, epsilon, listStates, currentState):
         x = random.uniform(0,1)
         #Fem exploració amb probabilitat epsilon
         if x < epsilon:
             n = random.randint(0, len(listStates) - 1)
-            return listStates[n]
+            nextState = listStates[n]
+            nextString = self.stateToString(nextState)
+            #Comprovem si l'estat s'ha visitat
+            currentDict = self.qTable[self.stateToString(currentState)]
+            if nextString not in currentDict.keys():
+                currentDict[nextString] = 0
+            return nextState, nextString
         #Fem exploració amb probabilitat 1 - epsilon
         else:
             listBestStates = []
             maxValue = -10000
-            currentDict = dictQValues[currentState]
+            currentDict = self.qTable[self.stateToString(currentState)]
             visitedStatesString = currentDict.keys()
             error = 0.01
             for state in listStates:
@@ -421,7 +427,9 @@ class Aichess():
                     listBestStates.append(state)
 
             n = random.randint(0, len(listBestStates) - 1)
-            return listBestStates[n]
+            nextState = listBestStates[n]
+            nextString = self.stateToString(nextState)
+            return nextState, nextString
 
     def epsilonStateBW(self, epsilon, listStates, currentState, dictQValues):
         x = random.uniform(0,1)
@@ -456,7 +464,7 @@ class Aichess():
         #Transformem l'estat en un string
         currentString = self.stateToString(currentState)
         #Guardem l'estat inicial de la taula
-        initialState = currentState
+        initialState, initialString = currentState, currentString
         self.qTable[currentString] = {}
         #Arribarem a aquest error al voltant de l'iteració 7500.
         #Aleshores, podem afirmar que el Q-learning convergeix.
@@ -481,8 +489,7 @@ class Aichess():
                         listNextStates.append(state)
 
                 #Triem un dels estats mitjançant exploració o explotació.
-                nextState = self.epsilonState(epsilon, listNextStates, currentState, self.qTable)
-                nextString = self.stateToString(nextState)
+                nextState, nextString = self.epsilonState(epsilon, listNextStates, currentState)
                 qValue = self.qTable[currentString][nextString]
                 #Obtenim la recompensa associada a l'estat nextState
                 recompensa = self.recompensa(nextState)
@@ -510,17 +517,18 @@ class Aichess():
                 else:
                     checkMate = True
             #Calculem la mitjana de la delta
-            mitjanaDelta = delta/numMovimentsCheckMate
-            print(numIteracions, mitjanaDelta)
+            if numMovimentsCheckMate != 0:
+                mitjanaDelta = delta/numMovimentsCheckMate
+                print(numIteracions, mitjanaDelta)
 
-            #Si està en l'interval (-error, error), vol dir que aquest camí ha convergit.
-            if mitjanaDelta < error and mitjanaDelta > -error:
-                numCaminsConvergents += 1
-            #Si no, reiniciem el comptador.
-            else:
-                numCaminsConvergents = 0
+                #Si està en l'interval (-error, error), vol dir que aquest camí ha convergit.
+                if mitjanaDelta < error and mitjanaDelta > -error:
+                    numCaminsConvergents += 1
+                #Si no, reiniciem el comptador.
+                else:
+                    numCaminsConvergents = 0
             self.newBoardSim(initialState+[[0,4,12]])
-            currentState = initialState
+            currentState, currentString = initialState, initialString
         #Quan ja s'acaba l'execució, recuperem el camí que ens porta a una recompensa major.
         self.reconstructPath(initialState)
         print(numIteracions)
@@ -872,7 +880,7 @@ if __name__ == "__main__":
     aichess.chess.boardSim.print_board()
 
     #aichess.QlearningWhitesVsBlacks(0.4,0.9,0.1)
-    #aichess.Qlearning(0.3, 0.9, 0.1)
+    aichess.Qlearning(0.3, 0.9, 0.1)
 
 
 
