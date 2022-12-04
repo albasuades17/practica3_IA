@@ -581,7 +581,7 @@ class Aichess():
             #Estem en empat
             else:
                 #Retornem recompensa i com que és un estat terminal, True.
-                return -1000, True
+                return 0, True
 
         if self.allWkMovementsWatched(currentState) and not torn:
             # Si el rei blanc està en check mate
@@ -591,16 +591,20 @@ class Aichess():
             # Estem en empat
             else:
                 # Retornem recompensa i com que és un estat terminal, True.
-                return -1000, True
-
+                return 0, True
+        #Les dues torres estan vives
         if brState != None and wrState != None:
             #No ens interessen les dues torres vives.
-            #Per tant, el cost per sobreviure és major.
-            return -2, False
-
+            #Per tant, el cost per sobreviure és major per les blanques
+            if torn:
+                return -1, False
+            else:
+                return 1, False
+        #Les dues torres estan mortes
         if brState == None and wrState == None:
+            """
             previousBrState = self.getPieceState(previousState,8)
-            #Valorem positivament matar la torre enemiga, si nosaltres ja no tenim torre.
+            #Les blanques han matat la torre negra.
             if previousBrState != None:
                 if torn:
                     return 50, True
@@ -614,20 +618,20 @@ class Aichess():
                 else:
                     return -1000, True
 
-
+            """
+            #Rei negre ha matat a la torre blanca. S'acaba la partida i compta com "mini-victòria" per les negres.
+            return 100, True
         if brState == None:
             #Si les blanques maten la torre negre, ara els costa menys sobreviure.
             if torn:
-                return -1, False
+                return -0.5, False
             #Ens interessa que les negres intentin sobreviure el màxim possible,
             # per tant sobreviure té un valor positiu.
             else:
-                return 0.1, False
+                return 0.5, False
         if wrState == None:
-            if torn:
-                return 0.1, False
-            else:
-                return -1, False
+            #Les negres han matat la torre blanca. Per tant, és torn de les negres i 'mini-victòria' per les negres
+            return 100, True
 
     def towersAlive(self, currentState):
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
@@ -705,11 +709,11 @@ class Aichess():
                         self.newBoardSim(nextState)
 
                         currentState, currentString = nextState, nextString
+                        numMovimentsBlanques += 1
 
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
                         checkMate = True
-                    numMovimentsBlanques += 1
 
                 else:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -760,25 +764,29 @@ class Aichess():
                         self.newBoardSim(nextState)
 
                         currentState, currentString = nextState, nextString
+                        numMovimentsNegres += 1
+
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
                         checkMate = True
-                    numMovimentsNegres += 1
 
                 torn = not torn
                 comptMoviments += 1
 
             # Calculem la mitjana de la delta
-            mitjanaDeltaBlanques = deltaBlanques / numMovimentsBlanques
-            mitjanaDeltaNegres = deltaNegres / numMovimentsNegres
-            print(numIteracions, mitjanaDeltaBlanques, mitjanaDeltaNegres)
-            # Si està en l'interval (-error, error), vol dir que aquest camí ha convergit.
-            if mitjanaDeltaBlanques < error and mitjanaDeltaBlanques > -error and mitjanaDeltaNegres < error and mitjanaDeltaNegres > -error:
-                numCaminsConvergents += 1
-            # Si no, reiniciem el comptador.
-            else:
-                numCaminsConvergents = 0
+            if numMovimentsBlanques != 0 and numMovimentsNegres != 0:
+                mitjanaDeltaBlanques = deltaBlanques / numMovimentsBlanques
+                mitjanaDeltaNegres = deltaNegres / numMovimentsNegres
+                print(numIteracions, mitjanaDeltaBlanques, mitjanaDeltaNegres)
+                # Si està en l'interval (-error, error), vol dir que aquest camí ha convergit.
+                if mitjanaDeltaBlanques < error and mitjanaDeltaBlanques > -error and mitjanaDeltaNegres < error and mitjanaDeltaNegres > -error:
+                    numCaminsConvergents += 1
+                # Si no, reiniciem el comptador.
+                else:
+                    numCaminsConvergents = 0
+
             self.chess.boardSim.print_board()
+
             self.newBoardSim(initialState)
             currentState = initialState
         self.reconstructPathBW(initialState)
@@ -817,8 +825,8 @@ if __name__ == "__main__":
     numExercici = 1
 
     #Configuració inicial del taulell
-    TA[7][0] = 2
-    TA[7][4] = 6
+    TA[1][0] = 2
+    TA[3][4] = 6
     #TA[0][7] = 8
     TA[0][4] = 12
 
@@ -830,7 +838,7 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
-    aichess.QlearningWhitesVsBlacks(0.3,0.9,0.1)
+    aichess.QlearningWhitesVsBlacks(0.4,0.9,0.1)
     #aichess.Qlearning(0.3, 0.9, 0.1)
 
 
