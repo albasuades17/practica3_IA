@@ -117,10 +117,35 @@ class Aichess():
                         self.numVisitedWhites[stringState][stringStateWin] = 1
 
 
+    def checkMateList(self):
+        #Fem una llista d'estats on en un moviment de la torre s'arriba a un checkMate
+        #Per la manera que hem fet els estats, podem fixar que el rei negre estigui entre la columna 0 i 3 (inclosa).
+        listCheckMates = []
+        for columnaBk in range(0, 4):
+            bkState = [0, columnaBk, 12]
+            wkState = [2, columnaBk, 6]
+            if columnaBk < 2:
+                for columnaWr in range(columnaBk + 2, 8):
+                    for filaWr in range(1, 8):
+                        wrState = [filaWr, columnaWr, 2]
+                        listCheckMates.append([wkState, bkState, wrState])
+            else:
+                for columnaWr in range(0, columnaBk -1):
+                    for filaWr in range(1,8):
+                        wrState = [filaWr, columnaWr, 2]
+                        listCheckMates.append([wkState, bkState, wrState])
+                for columnaWr in range(columnaBk + 2, 8):
+                    for filaWr in range(1, 8):
+                        wrState = [filaWr, columnaWr, 2]
+                        listCheckMates.append([wkState, bkState, wrState])
+        bkState = [0,0,12]
+        wkState = [1,2,6]
+        for i in range(2,8):
+            for j in range(1,8):
+                wrState = [i,j,2]
+                listCheckMates.append([bkState,wrState,wrState])
 
-
-
-
+        return listCheckMates
     def stateToString(self, whiteState):
         stringState = ""
         wkState = self.getPieceState(whiteState,6)
@@ -949,7 +974,10 @@ class Aichess():
         error = 0.15
         numIteracions = 0
         numCaminsConvergents = 0
+        indexListCheckMates = 0
+        listCheckMates = self.checkMateList()
         numCheckMates = 0
+        print("LEEEEN:", len(listCheckMates))
 
         while numCaminsConvergents < 10:
             numIteracions += 1
@@ -960,12 +988,21 @@ class Aichess():
             deltaNegres = 0
             comptMoviments = 0
 
-            if numCheckMates < 30:
-                print("CHECK MATE STATE")
-                print("\n\n")
-                currentState = self.makerCheckMates()
+            if indexListCheckMates < len(listCheckMates) -1:
+                if numCheckMates == 2:
+                    indexListCheckMates +=1
+                    numCheckMates = 0
+                    print("\n")
+                    print("INDEX",indexListCheckMates)
+                    print("\n")
+                currentState = listCheckMates[indexListCheckMates]
                 currentString = self.BWStateToString(currentState)
                 self.newBoardSim(currentState)
+            elif indexListCheckMates == len(listCheckMates) -1:
+                if numCheckMates < 2:
+                    currentState = listCheckMates[indexListCheckMates]
+                    currentString = self.BWStateToString(currentState)
+                    self.newBoardSim(currentState)
 
             listMovements = [currentState]
             listMovementsStrings = [currentString]
@@ -1143,8 +1180,8 @@ if __name__ == "__main__":
     numExercici = 1
 
     #Configuració inicial del taulell
-    TA[1][0] = 2
-    TA[3][4] = 6
+    TA[7][0] = 2
+    TA[5][4] = 6
     #TA[5][7] = 8
     TA[0][4] = 12
 
