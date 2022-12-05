@@ -925,6 +925,7 @@ class Aichess():
         error = 0.15
         numIteracions = 0
         numCaminsConvergents = 0
+        numCheckMates = 0
 
         while numCaminsConvergents < 10:
             numIteracions += 1
@@ -934,16 +935,16 @@ class Aichess():
             deltaBlanques = 0
             deltaNegres = 0
             comptMoviments = 0
-            listMovements = [currentState]
-            listMovementsStrings = [currentString]
 
-            if numIteracions < 2000:
+            if numCheckMates < 30:
+                print("CHECK MATE STATE")
+                print("\n\n")
                 currentState = self.makerCheckMates()
                 currentString = self.BWStateToString(currentState)
                 self.newBoardSim(currentState)
-                print("Board de check mate")
-                self.chess.boardSim.print_board()
-                print("\n\n")
+
+            listMovements = [currentState]
+            listMovementsStrings = [currentString]
             while not finalState:
                 if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
                     break
@@ -996,6 +997,8 @@ class Aichess():
                     else:
                         #Si s'ha produit checkmate, propaguem valor.
                         if self.isWatchedBk(nextState):
+                            #Comptem els número de checkMates que s'han fet seguits.
+                            numCheckMates +=1
                             print("\n\nCHECKMATE\n\n")
                             numMoves = len(listMovementsStrings)
                             rangePropagation = min(5, numMoves - 1)
@@ -1018,8 +1021,11 @@ class Aichess():
                                     qValue = (1 - alpha) * qValue + alpha * sample
                                     self.qTableBlacks[prevMoveString][nextMoveString] = qValue
                                 tornPropagation = not tornPropagation
+                        else:
+                            numCheckMates = 0
 
                         finalState = True
+
 
                 else:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -1071,6 +1077,7 @@ class Aichess():
 
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
+                        numCheckMates = 0
                         finalState = True
 
                 torn = not torn
