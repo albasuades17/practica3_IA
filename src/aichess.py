@@ -919,7 +919,6 @@ class Aichess():
         initialString = self.BWStateToString(initialState)
         currentState = initialState
         currentString = initialString
-        self.checkMateCheater(1000)
         #Restringim el número de moviments per cada partida.
         numMaxMoviments = 200
 
@@ -937,8 +936,16 @@ class Aichess():
             comptMoviments = 0
             listMovements = [currentState]
             listMovementsStrings = [currentString]
+
+            if numIteracions < 2000:
+                currentState = self.makerCheckMates()
+                currentString = self.BWStateToString(currentState)
+                self.newBoardSim(currentState)
+                print("Board de check mate")
+                self.chess.boardSim.print_board()
+                print("\n\n")
             while not finalState:
-                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 100:
+                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
                     break
                 if torn:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -1126,7 +1133,7 @@ if __name__ == "__main__":
     TA[1][0] = 2
     TA[3][4] = 6
     #TA[5][7] = 8
-    TA[0][7] = 12
+    TA[0][4] = 12
 
     # initialise board
     print("stating AI chess... ")
