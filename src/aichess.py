@@ -949,6 +949,7 @@ class Aichess():
         error = 0.15
         numIteracions = 0
         numCaminsConvergents = 0
+        numCheckMates = 0
 
         while numCaminsConvergents < 10:
             numIteracions += 1
@@ -959,10 +960,13 @@ class Aichess():
             deltaNegres = 0
             comptMoviments = 0
 
-            if numIteracions < 2000:
+            if numCheckMates < 30:
+                print("CHECK MATE STATE")
+                print("\n\n")
                 currentState = self.makerCheckMates()
                 currentString = self.BWStateToString(currentState)
                 self.newBoardSim(currentState)
+
             listMovements = [currentState]
             listMovementsStrings = [currentString]
             while not finalState:
@@ -1019,8 +1023,12 @@ class Aichess():
                         self.newBoardSim(nextState)
                         #Si s'ha produit checkmate, propaguem valor.
                         if self.isWatchedBk(nextState):
+                            #Comptem els número de checkMates que s'han fet seguits.
+                            numCheckMates +=1
                             print("\n\nCHECKMATE\n\n")
                             self.propagation(listMovements, listMovementsStrings, alpha, gamma)
+                        else:
+                            numCheckMates = 0
 
                         finalState = True
 
@@ -1074,6 +1082,7 @@ class Aichess():
 
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
+                        numCheckMates = 0
                         self.newBoardSim(nextState)
                         finalState = True
 
