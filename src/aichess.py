@@ -872,7 +872,7 @@ class Aichess():
             deltaNegres = 0
             comptMoviments = 0
             while not checkMate:
-                if comptMoviments >= numMaxMoviments and self.towersAlive(currentState):
+                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
                     break
                 if torn:
                     # Si no hem visitat l'estat, l'afegim a la q-table
