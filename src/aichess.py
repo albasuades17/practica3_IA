@@ -76,7 +76,7 @@ class Aichess():
 
         return whiteState
 
-    def BWStateToString(self, state):
+    def BWStateToString2(self, state):
         stringState = ""
         wrState = self.getPieceState(state,2)
         if wrState != None:
@@ -90,6 +90,87 @@ class Aichess():
         bkState = self.getPieceState(state, 12)
         stringState += str(bkState[0]) + str(bkState[1]) + "x"
         return stringState
+
+    def BWStateToString(self, currentState):
+        stringState = ""
+        wrState = self.getPieceState(currentState, 2)
+        brState = self.getPieceState(currentState, 8)
+        bkState = self.getPieceState(currentState, 12)
+        wkState = self.getPieceState(currentState, 6)
+        listStates = [bkState, wkState]
+        listClassStates = []
+        if wrState != None:
+            listStates.append(wrState)
+        if brState != None:
+            listStates.append(brState)
+        #Transformem respecte eix x
+        if bkState[0] > 3:
+            for state in listStates:
+                listClassStates.append([7-state[0]])
+        else:
+            for state in listStates:
+                listClassStates.append([state[0]])
+        #Transformem respecte eix y
+        if bkState[1] > 3:
+            i = 0
+            for state in listStates:
+                listClassStates[i].append(7-state[1])
+                i+=1
+        else:
+            i = 0
+            for state in listStates:
+                listClassStates[i].append(state[1])
+                i += 1
+        #Transformem respecte diagonal
+        if bkState[1] < bkState[0]:
+            i = 0
+            for state in listStates:
+                listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], listClassStates[i][0]
+                i += 1
+
+        #Fem simetries si el rei negre està a la diagonal. Això ho fem per fixar un estat representant.
+        classBk = listClassStates[0]
+        lenStates = len(listClassStates)
+        if classBk[0] == classBk[1]:
+            classWk = listClassStates[1]
+            if classWk[0] > classWk[1]:
+                i = 0
+                for state in listStates:
+                    listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], listClassStates[i][0]
+                    i += 1
+            elif classWk[0] == classWk[1]:
+                if lenStates > 2:
+                    classPiece = listClassStates[2]
+                    if classPiece[0] > classPiece[1]:
+                        i = 0
+                        for state in listStates:
+                            listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], listClassStates[i][0]
+                            i += 1
+                    elif classPiece[0] == classPiece[1]:
+                        if lenStates > 3:
+                            classPiece = listClassStates[3]
+                            if classPiece[0] > classPiece[1]:
+                                i = 0
+                                for state in listStates:
+                                    listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], \
+                                                                                   listClassStates[i][0]
+                                    i += 1
+
+        piecesStateClass = [listClassStates[0]+[12],listClassStates[1]+[6]]
+        i = 2
+        if wrState != None:
+            piecesStateClass.append(listClassStates[2]+[2])
+            i+=1
+        if brState != None:
+            piecesStateClass.append(listClassStates[i] + [8])
+
+        stringListStates = ""
+        for state in piecesStateClass:
+            pieceNumString = str(state[2])
+            if state[2] == 12:
+                pieceNumString = "x"
+            stringListStates += str(state[0]) + str(state[1]) + pieceNumString
+        return stringListStates
 
     def stringToBWState(self, string):
         state = []
@@ -769,7 +850,6 @@ class Aichess():
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
 
     def QlearningWhitesVsBlacks(self, epsilon, alpha, gamma):
-        checkMate = False
         torn = True
 
         initialState = self.getCurrentState()
@@ -910,6 +990,7 @@ class Aichess():
 
             self.newBoardSim(initialState)
             currentState, currentString = initialState, initialString
+            torn = True
 
         self.reconstructPathBW(initialState)
         return 0
@@ -949,7 +1030,7 @@ if __name__ == "__main__":
     #Configuració inicial del taulell
     TA[1][0] = 2
     TA[3][4] = 6
-    #TA[0][7] = 8
+    #TA[5][7] = 8
     TA[0][4] = 12
 
     # initialise board
@@ -960,6 +1041,7 @@ if __name__ == "__main__":
     print("printing board")
     aichess.chess.boardSim.print_board()
 
+    #print(aichess.BWStateToString(aichess.getCurrentState()))
     aichess.QlearningWhitesVsBlacks(0.3,0.9,0.1)
     #aichess.Qlearning(0.3, 0.9, 0.1)
 
