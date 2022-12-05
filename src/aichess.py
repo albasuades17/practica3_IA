@@ -73,6 +73,54 @@ class Aichess():
 
         return [wkState,bkState,wrState]
 
+    def checkMateCheater(self, checkMateValue):
+        for columnaBk in range(0, 4):
+            bkState = [0, columnaBk, 12]
+            wkState = [2, columnaBk, 6]
+            if columnaBk < 2:
+                for columnaWr in range(columnaBk + 2, 8):
+                    for filaWr in range(1, 8):
+                        wrState = [filaWr, columnaWr, 2]
+                        wrStateWin = [0, columnaWr, 2]
+                        state = [wkState, bkState, wrState]
+                        stateWin = [wkState, bkState, wrStateWin]
+                        stringState = self.BWStateToString(state)
+                        stringStateWin = self.BWStateToString(stateWin)
+                        self.qTableWhites[stringState] = {}
+                        self.numVisitedWhites[stringState] = {}
+                        self.qTableWhites[stringState][stringStateWin] = checkMateValue
+                        self.numVisitedWhites[stringState][stringStateWin] = 1
+            else:
+                for columnaWr in range(0, columnaBk -1):
+                    for filaWr in range(1,8):
+                        wrState = [filaWr, columnaWr, 2]
+                        wrStateWin = [0, columnaWr, 2]
+                        state = [wkState, bkState, wrState]
+                        stateWin = [wkState, bkState, wrStateWin]
+                        stringState = self.BWStateToString(state)
+                        stringStateWin = self.BWStateToString(stateWin)
+                        self.qTableWhites[stringState] = {}
+                        self.numVisitedWhites[stringState] = {}
+                        self.qTableWhites[stringState][stringStateWin] = checkMateValue
+                        self.numVisitedWhites[stringState][stringStateWin] = 1
+                for columnaWr in range(columnaBk + 2, 8):
+                    for filaWr in range(1, 8):
+                        wrState = [filaWr, columnaWr, 2]
+                        wrStateWin = [0, columnaWr, 2]
+                        state = [wkState, bkState, wrState]
+                        stateWin = [wkState, bkState, wrStateWin]
+                        stringState = self.BWStateToString(state)
+                        stringStateWin = self.BWStateToString(stateWin)
+                        self.qTableWhites[stringState] = {}
+                        self.numVisitedWhites[stringState] = {}
+                        self.qTableWhites[stringState][stringStateWin] = checkMateValue
+                        self.numVisitedWhites[stringState][stringStateWin] = 1
+
+
+
+
+
+
     def stateToString(self, whiteState):
         stringState = ""
         wkState = self.getPieceState(whiteState,6)
@@ -871,6 +919,7 @@ class Aichess():
         initialString = self.BWStateToString(initialState)
         currentState = initialState
         currentString = initialString
+        self.checkMateCheater(1000)
         #Restringim el número de moviments per cada partida.
         numMaxMoviments = 200
 
@@ -880,18 +929,16 @@ class Aichess():
 
         while numCaminsConvergents < 10:
             numIteracions += 1
-            checkMate = False
+            finalState = False
             numMovimentsBlanques = 0
             numMovimentsNegres = 0
             deltaBlanques = 0
             deltaNegres = 0
             comptMoviments = 0
-            if numIteracions < 1000:
-                currentState = self.makerCheckMates()
-                currentString = self.BWStateToString(currentState)
-                self.newBoardSim(currentState)
-            while not checkMate:
-                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
+            listMovements = [currentState]
+            listMovementsStrings = [currentString]
+            while not finalState:
+                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 100:
                     break
                 if torn:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -915,6 +962,8 @@ class Aichess():
 
                     # Triem un dels estats mitjançant exploració o explotació.
                     nextState, nextString = self.epsilonStateBW(epsilon, listNextStates, currentState, torn)
+                    listMovementsStrings.append(nextString)
+                    listMovements.append(nextState)
                     qValue = self.qTableWhites[currentString][nextString]
                     self.numVisitedWhites[currentString][nextString]+=1
                     # Obtenim la recompensa associada a l'estat nextState, i si és un estat terminal
@@ -938,7 +987,32 @@ class Aichess():
                         numMovimentsBlanques += 1
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
-                        checkMate = True
+                        #Si s'ha produit checkmate, propaguem valor.
+                        if self.isWatchedBk(nextState):
+                            print("\n\nCHECKMATE\n\n")
+                            numMoves = len(listMovementsStrings)
+                            rangePropagation = min(5, numMoves - 1)
+                            tornPropagation = False
+                            for i in range(1, rangePropagation):
+                                prevMoveString = listMovementsStrings[numMoves - 2 - i]
+                                nextMoveString = listMovementsStrings[numMoves - 1 - i]
+                                prevMove = listMovements[numMoves - 2 - i]
+                                nextMove = listMovements[numMoves - 1 - i]
+                                if tornPropagation:
+                                    qValue = self.qTableWhites[prevMoveString][nextMoveString]
+                                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
+                                    sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableBlacks)
+                                    qValue = (1 - alpha) * qValue + alpha * sample
+                                    self.qTableWhites[prevMoveString][nextMoveString] = qValue
+                                else:
+                                    qValue = self.qTableBlacks[prevMoveString][nextMoveString]
+                                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
+                                    sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableWhites)
+                                    qValue = (1 - alpha) * qValue + alpha * sample
+                                    self.qTableBlacks[prevMoveString][nextMoveString] = qValue
+                                tornPropagation = not tornPropagation
+
+                        finalState = True
 
                 else:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -962,6 +1036,8 @@ class Aichess():
 
                     # Triem un dels estats mitjançant exploració o explotació.
                     nextState, nextString = self.epsilonStateBW(epsilon, listNextStates, currentState, torn)
+                    listMovementsStrings.append(nextString)
+                    listMovements.append(nextState)
 
                     # Si no l'hem visitat, el seu Q-value inicial és 0
                     qValue = self.qTableBlacks[currentString][nextString]
@@ -988,7 +1064,7 @@ class Aichess():
 
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
-                        checkMate = True
+                        finalState = True
 
                 torn = not torn
                 comptMoviments += 1
@@ -1050,7 +1126,7 @@ if __name__ == "__main__":
     TA[1][0] = 2
     TA[3][4] = 6
     #TA[5][7] = 8
-    TA[0][4] = 12
+    TA[0][7] = 12
 
     # initialise board
     print("stating AI chess... ")
