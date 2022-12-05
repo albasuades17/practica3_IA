@@ -886,10 +886,13 @@ class Aichess():
             deltaBlanques = 0
             deltaNegres = 0
             comptMoviments = 0
-            if numIteracions < 1000:
+            if numIteracions < 2000:
                 currentState = self.makerCheckMates()
                 currentString = self.BWStateToString(currentState)
                 self.newBoardSim(currentState)
+                print("Board de check mate")
+                self.chess.boardSim.print_board()
+                print("\n\n")
             while not checkMate:
                 if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
                     break
