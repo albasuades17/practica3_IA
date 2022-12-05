@@ -546,10 +546,57 @@ class Aichess():
         else:
             currentDict = self.qTableBlacks[currentString]
             numVisitedTable = self.numVisitedBlacks[currentString]
+
+        k = 500
+        maxValue = float('-inf')
+        listVisitedStates = currentDict.keys()
+        error = 3
+        listBestStates = []
+
+        for state in listStates:
+            stringState = self.BWStateToString(state)
+            if stringState not in listVisitedStates:
+                currentDict[stringState] = 0
+                numVisitedTable[stringState] = 0
+
+            qValue = currentDict[stringState]
+            N = numVisitedTable[stringState]
+            #Si no l'hem visitat, automàticament el visitem.
+            if N == 0:
+                return state, stringState
+
+            #Fem una estimació del valor que podria arribar a tenir aquest estat, considerant el número
+            #de vegades visitat
+            estimatedValue = qValue + k/N
+
+            if estimatedValue > maxValue:
+                maxValue = estimatedValue
+
+        for state in listStates:
+            stringState = self.BWStateToString(state)
+            qValue = currentDict[stringState]
+            N = numVisitedTable[stringState]
+            estimatedValue = qValue + k/N
+            if estimatedValue >= maxValue - error and estimatedValue <= maxValue + error:
+                listBestStates.append((state, stringState))
+
+        n = random.randint(0,len(listBestStates)-1)
+        maxState, maxStateString = listBestStates[n][0], listBestStates[n][1]
+        return maxState, maxStateString
+
+    def epsilonStateBW2(self, epsilon, listStates, currentState, torn):
+        x = random.uniform(0,1)
+        currentString = self.BWStateToString(currentState)
+        if torn:
+            currentDict = self.qTableWhites[currentString]
+            numVisitedTable = self.numVisitedWhites[currentString]
+        else:
+            currentDict = self.qTableBlacks[currentString]
+            numVisitedTable = self.numVisitedBlacks[currentString]
         #Fem exploració amb probabilitat epsilon
         if x < epsilon:
             leastVisitedStates = []
-            minValue = 0
+            minValue = float('inf')
             error = 20
             visitedStatesString = currentDict.keys()
             for state in listStates:
@@ -770,6 +817,7 @@ class Aichess():
                     # Triem un dels estats mitjançant exploració o explotació.
                     nextState, nextString = self.epsilonStateBW(epsilon, listNextStates, currentState, torn)
                     qValue = self.qTableWhites[currentString][nextString]
+                    self.numVisitedWhites[currentString][nextString]+=1
                     # Obtenim la recompensa associada a l'estat nextState, i si és un estat terminal
                     recompensa, isFinalState = self.recompensaBW(nextState, currentState, torn)
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
@@ -818,6 +866,7 @@ class Aichess():
 
                     # Si no l'hem visitat, el seu Q-value inicial és 0
                     qValue = self.qTableBlacks[currentString][nextString]
+                    self.numVisitedBlacks[currentString][nextString]+=1
                     # Obtenim la recompensa associada a l'estat nextState i si és un estat terminal.
                     recompensa, isFinalState = self.recompensaBW(nextState, currentState, torn)
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
