@@ -55,8 +55,23 @@ class Aichess():
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
+        self.taulellCheckMates = [[[0,0,6],]]
 
+    def makerCheckMates(self):
+        columnaBk = random.randint(0,3)
+        bkState = [0,columnaBk,12]
+        wkState = [2,columnaBk,6]
+        #Per tant, la torre no es pot posar a l'esquerra del rei negre
+        if columnaBk < 2:
+            wrState = [1,random.randint(columnaBk+2,7),2]
+        else:
+            num = random.randint(0,4)
+            if num <= columnaBk-2:
+                wrState = [random.randint(1,7), num, 2]
+            else:
+                wrState = [random.randint(1,7), num+3, 2]
 
+        return [wkState,bkState,wrState]
 
     def stateToString(self, whiteState):
         stringState = ""
@@ -871,6 +886,10 @@ class Aichess():
             deltaBlanques = 0
             deltaNegres = 0
             comptMoviments = 0
+            if numIteracions < 1000:
+                currentState = self.makerCheckMates()
+                currentString = self.BWStateToString(currentState)
+                self.newBoardSim(currentState)
             while not checkMate:
                 if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
                     break
