@@ -912,6 +912,30 @@ class Aichess():
     def towersAlive(self, currentState):
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
 
+    def propagation(self, listMovements, listMovementsStrings, alpha, gamma):
+        numMoves = len(listMovementsStrings)
+        rangePropagation = min(10, numMoves - 1)
+        for j in range(1, rangePropagation):
+            tornPropagation = False
+            for i in range(1, j+1):
+                prevMoveString = listMovementsStrings[numMoves - 2 - i]
+                nextMoveString = listMovementsStrings[numMoves - 1 - i]
+                prevMove = listMovements[numMoves - 2 - i]
+                nextMove = listMovements[numMoves - 1 - i]
+                if tornPropagation:
+                    qValue = self.qTableWhites[prevMoveString][nextMoveString]
+                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
+                    sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableBlacks)
+                    qValue = (1 - alpha) * qValue + alpha * sample
+                    self.qTableWhites[prevMoveString][nextMoveString] = qValue
+                else:
+                    qValue = self.qTableBlacks[prevMoveString][nextMoveString]
+                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
+                    sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableWhites)
+                    qValue = (1 - alpha) * qValue + alpha * sample
+                    self.qTableBlacks[prevMoveString][nextMoveString] = qValue
+                tornPropagation = not tornPropagation
+
     def QlearningWhitesVsBlacks(self, epsilon, alpha, gamma):
         torn = True
 
@@ -920,7 +944,7 @@ class Aichess():
         currentState = initialState
         currentString = initialString
         #Restringim el número de moviments per cada partida.
-        numMaxMoviments = 200
+        numMaxMoviments = 80
 
         error = 0.15
         numIteracions = 0
@@ -934,18 +958,15 @@ class Aichess():
             deltaBlanques = 0
             deltaNegres = 0
             comptMoviments = 0
-            listMovements = [currentState]
-            listMovementsStrings = [currentString]
 
             if numIteracions < 2000:
                 currentState = self.makerCheckMates()
                 currentString = self.BWStateToString(currentState)
                 self.newBoardSim(currentState)
-                print("Board de check mate")
-                self.chess.boardSim.print_board()
-                print("\n\n")
+            listMovements = [currentState]
+            listMovementsStrings = [currentString]
             while not finalState:
-                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 250:
+                if (comptMoviments >= numMaxMoviments and self.towersAlive(currentState)) or comptMoviments >= 50:
                     break
                 if torn:
                     # Si no hem visitat l'estat, l'afegim a la q-table
@@ -994,30 +1015,12 @@ class Aichess():
                         numMovimentsBlanques += 1
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
+                        # Movem les fitxes a la posició actual
+                        self.newBoardSim(nextState)
                         #Si s'ha produit checkmate, propaguem valor.
                         if self.isWatchedBk(nextState):
                             print("\n\nCHECKMATE\n\n")
-                            numMoves = len(listMovementsStrings)
-                            rangePropagation = min(5, numMoves - 1)
-                            tornPropagation = False
-                            for i in range(1, rangePropagation):
-                                prevMoveString = listMovementsStrings[numMoves - 2 - i]
-                                nextMoveString = listMovementsStrings[numMoves - 1 - i]
-                                prevMove = listMovements[numMoves - 2 - i]
-                                nextMove = listMovements[numMoves - 1 - i]
-                                if tornPropagation:
-                                    qValue = self.qTableWhites[prevMoveString][nextMoveString]
-                                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
-                                    sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableBlacks)
-                                    qValue = (1 - alpha) * qValue + alpha * sample
-                                    self.qTableWhites[prevMoveString][nextMoveString] = qValue
-                                else:
-                                    qValue = self.qTableBlacks[prevMoveString][nextMoveString]
-                                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
-                                    sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableWhites)
-                                    qValue = (1 - alpha) * qValue + alpha * sample
-                                    self.qTableBlacks[prevMoveString][nextMoveString] = qValue
-                                tornPropagation = not tornPropagation
+                            self.propagation(listMovements, listMovementsStrings, alpha, gamma)
 
                         finalState = True
 
@@ -1071,6 +1074,7 @@ class Aichess():
 
                     # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
                     else:
+                        self.newBoardSim(nextState)
                         finalState = True
 
                 torn = not torn
