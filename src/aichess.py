@@ -5,16 +5,13 @@ Created on Thu Sep  8 11:22:03 2022
 
 @author: ignasi
 """
-import copy
-import math
+
+import random
+from typing import List
+
+import numpy as np
 
 import chess
-import board
-import numpy as np
-import sys
-import queue
-from typing import List
-import random
 
 RawStateType = List[List[List[int]]]
 
@@ -56,6 +53,9 @@ class Aichess():
         self.qTable = {}
         self.qTableWhites = {}
         self.qTableBlacks = {}
+        self.numVisitedWhites = {}
+        self.numVisitedBlacks = {}
+
 
 
     def stateToString(self, whiteState):
@@ -106,6 +106,7 @@ class Aichess():
         for piece in state:
             copyState.append(piece.copy())
         return copyState
+
     def isVisitedSituation(self, color, mystate):
         if (len(self.listVisitedSituations) > 0):
             perm_state = list(permutations(mystate))
@@ -121,7 +122,6 @@ class Aichess():
             return isVisited
         else:
             return False
-
 
     def getCurrentStateW(self):
 
@@ -431,52 +431,6 @@ class Aichess():
             nextString = self.stateToString(nextState)
             return nextState, nextString
 
-    def epsilonStateBW(self, epsilon, listStates, currentState, torn):
-        x = random.uniform(0,1)
-        if torn:
-            currentDict = self.qTableWhites[self.BWStateToString(currentState)]
-        else:
-            currentDict = self.qTableBlacks[self.BWStateToString(currentState)]
-        #Fem exploració amb probabilitat epsilon
-        if x < epsilon:
-            n = random.randint(0, len(listStates) - 1)
-            nextState = listStates[n]
-            nextString = self.BWStateToString(nextState)
-            #Comprovem si l'estat s'ha visitat
-            if nextString not in currentDict.keys():
-                currentDict[nextString] = 0
-            return nextState, nextString
-        #Fem exploració amb probabilitat 1 - epsilon
-        else:
-            listBestStates = []
-            maxValue = -10000
-            visitedStatesString = currentDict.keys()
-            error = 0.01
-            for state in listStates:
-                stateString = self.BWStateToString(state)
-                #Si l'estat no ha estat visitat, l'inicialitzem
-                if stateString not in visitedStatesString:
-                    currentDict[stateString] = 0
-                qValue = currentDict[stateString]
-                #Valorem si el valor es troba dins d'un marge d'error del major valor trobat
-                #En cas afirmatiu, l'afegim als millors estats possibles
-                if qValue <= maxValue + error and qValue >= maxValue - error:
-                    listBestStates.append(state)
-                #Si el valor está fora de rang i és major que el major valor trobat, passa a ser el valor
-                #màxim.
-                elif qValue > maxValue:
-                    maxValue = qValue
-                    listBestStates.clear()
-                    listBestStates.append(state)
-
-            n = random.randint(0, len(listBestStates) - 1)
-            nextState = listBestStates[n]
-            nextString = self.BWStateToString(nextState)
-            return nextState, nextString
-
-
-
-
     def Qlearning(self, epsilon, gamma, alpha):
         currentState = self.getCurrentStateW()
         #Transformem l'estat en un string
@@ -582,6 +536,82 @@ class Aichess():
                 checkMate = True
 
         print(path)
+
+    def epsilonStateBW(self, epsilon, listStates, currentState, torn):
+        x = random.uniform(0,1)
+        currentString = self.BWStateToString(currentState)
+        if torn:
+            currentDict = self.qTableWhites[currentString]
+            numVisitedTable = self.numVisitedWhites[currentString]
+        else:
+            currentDict = self.qTableBlacks[currentString]
+            numVisitedTable = self.numVisitedBlacks[currentString]
+        #Fem exploració amb probabilitat epsilon
+        if x < epsilon:
+            leastVisitedStates = []
+            minValue = 0
+            error = 20
+            visitedStatesString = currentDict.keys()
+            for state in listStates:
+                stateString = self.BWStateToString(state)
+                # Si l'estat no ha estat visitat, l'inicialitzem
+                if stateString not in visitedStatesString:
+                    currentDict[stateString] = 0
+                    #Com que no està visitat, la N = 0
+                    numVisitedTable[stateString] = 0
+
+                N = numVisitedTable[stateString]
+                # Valorem si el valor es troba dins d'un marge d'error del menor valor trobat
+                # En cas afirmatiu, l'afegim als estats menys visitats
+                if N <= minValue + error and N >= minValue - error:
+                    leastVisitedStates.append(state)
+                # Si el valor está fora de rang i és major que el major valor trobat, passa a ser el valor
+                # màxim.
+                elif N < minValue:
+                    minValue = N
+                    leastVisitedStates.clear()
+                    leastVisitedStates.append(state)
+
+            n = random.randint(0, len(leastVisitedStates) - 1)
+            nextState = leastVisitedStates[n]
+            nextString = self.BWStateToString(nextState)
+            """
+            n = random.randint(0, len(listStates) - 1)
+            nextState = listStates[n]
+            nextString = self.BWStateToString(nextState)
+            #Comprovem si l'estat s'ha visitat
+            if nextString not in currentDict.keys():
+                currentDict[nextString] = 0
+            """
+            return nextState, nextString
+        #Fem exploració amb probabilitat 1 - epsilon
+        else:
+            listBestStates = []
+            maxValue = -10000
+            visitedStatesString = currentDict.keys()
+            error = 0.01
+            for state in listStates:
+                stateString = self.BWStateToString(state)
+                #Si l'estat no ha estat visitat, l'inicialitzem
+                if stateString not in visitedStatesString:
+                    currentDict[stateString] = 0
+                    numVisitedTable[stateString] = 0
+                qValue = currentDict[stateString]
+                #Valorem si el valor es troba dins d'un marge d'error del major valor trobat
+                #En cas afirmatiu, l'afegim als millors estats possibles
+                if qValue <= maxValue + error and qValue >= maxValue - error:
+                    listBestStates.append(state)
+                #Si el valor está fora de rang i és major que el major valor trobat, passa a ser el valor
+                #màxim.
+                elif qValue > maxValue:
+                    maxValue = qValue
+                    listBestStates.clear()
+                    listBestStates.append(state)
+
+            n = random.randint(0, len(listBestStates) - 1)
+            nextState = listBestStates[n]
+            nextString = self.BWStateToString(nextState)
+            return nextState, nextString
 
     def reconstructPathBW(self, initialState):
         currentState = initialState
@@ -721,6 +751,7 @@ class Aichess():
                     # Si no hem visitat l'estat, l'afegim a la q-table
                     if currentString not in self.qTableWhites.keys():
                         self.qTableWhites[currentString] = {}
+                        self.numVisitedWhites[currentString] = {}
 
                     listNextStates = []
                     blackState = self.getBlackState(currentState)
@@ -766,6 +797,7 @@ class Aichess():
                     # Si no hem visitat l'estat, l'afegim a la q-table
                     if currentString not in self.qTableBlacks.keys():
                         self.qTableBlacks[currentString] = {}
+                        self.numVisitedBlacks[currentString] = {}
 
                     listNextStates = []
                     whiteState = self.getWhiteState(currentState)
