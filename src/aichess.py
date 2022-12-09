@@ -143,7 +143,7 @@ class Aichess():
         for i in range(2,8):
             for j in range(1,8):
                 wrState = [i,j,2]
-                listCheckMates.append([bkState,wrState,wrState])
+                listCheckMates.append([wkState, bkState, wrState])
 
         return listCheckMates
     def stateToString(self, whiteState):
@@ -953,12 +953,14 @@ class Aichess():
                     sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableBlacks)
                     qValue = (1 - alpha) * qValue + alpha * sample
                     self.qTableWhites[prevMoveString][nextMoveString] = qValue
+                    self.numVisitedWhites[prevMoveString][nextMoveString] += 1
                 else:
                     qValue = self.qTableBlacks[prevMoveString][nextMoveString]
                     recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
                     sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableWhites)
                     qValue = (1 - alpha) * qValue + alpha * sample
                     self.qTableBlacks[prevMoveString][nextMoveString] = qValue
+                    self.numVisitedBlacks[prevMoveString][nextMoveString] += 1
                 tornPropagation = not tornPropagation
 
     def QlearningWhitesVsBlacks(self, epsilon, alpha, gamma):
