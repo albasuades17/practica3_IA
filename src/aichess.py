@@ -1142,6 +1142,9 @@ class Aichess():
                             numCheckMates +=1
                             print("\n\nCHECKMATE\n\n")
                             self.propagation(listMovements, listMovementsStrings, alpha, gamma)
+                            ###########
+                            self.newBoardSim(nextState)
+                            ###########
 
                         finalState = True
 
@@ -1246,8 +1249,8 @@ if __name__ == "__main__":
 
     #Configuració inicial del taulell
     TA[7][0] = 2
-    TA[5][4] = 6
-    #TA[5][7] = 8
+    TA[7][4] = 6
+    TA[0][7] = 8
     TA[0][4] = 12
 
     # initialise board
@@ -1261,6 +1264,7 @@ if __name__ == "__main__":
     #print(aichess.BWStateToString(aichess.getCurrentState()))
     aichess.QlearningWhitesVsBlacks(0.9, 0.1)
     #aichess.Qlearning(0.3, 0.9, 0.1)
+
 
 
 
