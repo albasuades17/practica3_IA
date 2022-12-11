@@ -158,6 +158,8 @@ class Aichess():
         listMiddleStates.append([[1, 1, 12], [2, 6, 2], [4, 6, 6]])
         listMiddleStates.append([[2, 3, 12], [3, 6, 2], [5, 4, 6]])
         listMiddleStates.append([[2, 5, 12], [3, 7, 2], [7, 4, 6]])
+        listMiddleStates.append([[2, 4, 12], [0, 7, 2], [7, 4, 6]])
+        listMiddleStates.append([[2, 6, 12], [0, 7, 2], [7, 4, 6]])
         return listMiddleStates
 
     def stateToString(self, whiteState):
@@ -919,9 +921,9 @@ class Aichess():
             #No ens interessen les dues torres vives.
             #Per tant, el cost per sobreviure és major per les blanques
             if torn:
-                return -1, False
+                return -2, False
             else:
-                return 1, False
+                return 2, False
         #Les dues torres estan mortes
         if brState == None and wrState == None:
             """
@@ -992,7 +994,7 @@ class Aichess():
 
     def propagation(self, listMovements, listMovementsStrings, alpha, gamma):
         numMoves = len(listMovementsStrings)
-        rangePropagation = min(10, numMoves - 1)
+        rangePropagation = numMoves - 1
         for j in range(1, rangePropagation):
             tornPropagation = False
             for i in range(1, j+1):
@@ -1071,7 +1073,7 @@ class Aichess():
                 if indexList == len(listMiddleStates) - 1 and numCheckMates == 3:
                     middleExploration = False
                 else:
-                    if numCheckMates == 3:
+                    if numCheckMates == 6:
                         indexList += 1
                         numCheckMates = 0
                         print("\n")
