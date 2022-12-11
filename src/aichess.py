@@ -1022,6 +1022,12 @@ class Aichess():
         listMiddleStates = self.middleStatesList()
         middleExploration = False
 
+        loadQTable = False
+        if loadQTable:
+            checkMateExploration = False
+            middleExploration = False
+            self.loadQTable()
+
 
         while numCaminsConvergents < 10:
             numIteracions += 1
@@ -1054,7 +1060,7 @@ class Aichess():
                 numMaxMovimentsTowerDead = 80
                 if indexList == len(listMiddleStates) - 1 and numCheckMates == 3:
                     middleExploration = False
-                    self.loadQTable()
+                    self.saveQTable()
                 else:
                     if numCheckMates == 10:
                         indexList += 1
