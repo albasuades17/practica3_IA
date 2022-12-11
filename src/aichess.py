@@ -14,6 +14,7 @@ import numpy as np
 import chess
 
 import json
+import os
 
 RawStateType = List[List[List[int]]]
 
@@ -1216,10 +1217,14 @@ class Aichess():
         return
 
     def saveQTable(self):
+        if os.path.exists("qTableWhites.txt"):
+            os.remove("qTableWhites.txt")
         with open('qTableWhites.txt', 'w') as data:
-            data.write(str(self.qTableWhites))
+            data.write(json.dumps(self.qTableWhites))
+        if os.path.exists("qTableBlacks.txt"):
+            os.remove("qTableBlacks.txt")
         with open('qTableBlacks.txt', 'w') as data:
-            data.write(str(self.qTableBlacks))
+            data.write(json.dumps(self.qTableBlacks))
         return
 
 
@@ -1271,6 +1276,9 @@ if __name__ == "__main__":
     #print(aichess.BWStateToString(aichess.getCurrentState()))
     aichess.QlearningWhitesVsBlacks(0.9, 0.1)
     #aichess.Qlearning(0.3, 0.9, 0.1)
+
+
+
 
 
 
