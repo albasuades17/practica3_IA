@@ -727,7 +727,6 @@ class Aichess():
         print(path)
 
     def explorationFunction(self, listStates, currentState, torn):
-        x = random.uniform(0,1)
         currentString = self.BWStateToString(currentState)
         if torn:
             currentDict = self.qTableWhites[currentString]
@@ -894,7 +893,8 @@ class Aichess():
 
         print(path)
 
-    def recompensaBW(self, currentState, torn):
+    def recompensaBW(self, currentState, torn, previousState):
+        previousBrState = self.getPieceState(previousState, 8)
         brState = self.getPieceState(currentState, 8)
         wrState = self.getPieceState(currentState, 2)
 
@@ -930,7 +930,10 @@ class Aichess():
             #Rei negre ha matat a la torre blanca. S'acaba la partida i compta com "mini-victòria" per les negres.
             return 400, True
         if brState == None:
-            #Si les blanques maten la torre negre, ara els costa menys sobreviure.
+            #Si les blanques just han matat la torre negra, és torn de les blanques, recompensa positiva
+            if previousBrState != None:
+                return 100, False
+            #Si la torre negra ja està morta, ara els costa menys sobreviure.
             if torn:
                 return -0.5, False
             #Ens interessa que les negres intentin sobreviure el màxim possible,
@@ -984,17 +987,18 @@ class Aichess():
             for i in range(1, j+1):
                 prevMoveString = listMovementsStrings[numMoves - 2 - i]
                 nextMoveString = listMovementsStrings[numMoves - 1 - i]
+                prevMove = listMovements[numMoves - 2 - i]
                 nextMove = listMovements[numMoves - 1 - i]
                 if tornPropagation:
                     qValue = self.qTableWhites[prevMoveString][nextMoveString]
-                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation)
+                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation, prevMove)
                     sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableBlacks)
                     qValue = (1 - alpha) * qValue + alpha * sample
                     self.qTableWhites[prevMoveString][nextMoveString] = qValue
                     self.numVisitedWhites[prevMoveString][nextMoveString] += 1
                 else:
                     qValue = self.qTableBlacks[prevMoveString][nextMoveString]
-                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation)
+                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation, prevMove)
                     sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableWhites)
                     qValue = (1 - alpha) * qValue + alpha * sample
                     self.qTableBlacks[prevMoveString][nextMoveString] = qValue
@@ -1103,7 +1107,7 @@ class Aichess():
                     self.numVisitedWhites[currentString][nextString]+=1
 
                     # Obtenim la recompensa associada a l'estat nextState, i si és un estat terminal
-                    recompensa, isFinalState = self.recompensaBW(nextState, torn)
+                    recompensa, isFinalState = self.recompensaBW(nextState, torn, currentState)
 
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                     # Ja que és un estat terminal.
@@ -1158,7 +1162,7 @@ class Aichess():
                     self.numVisitedBlacks[currentString][nextString]+=1
 
                     # Obtenim la recompensa associada a l'estat nextState i si és un estat terminal.
-                    recompensa, isFinalState = self.recompensaBW(nextState, torn)
+                    recompensa, isFinalState = self.recompensaBW(nextState, torn, currentState)
 
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                     # Ja que és un estat terminal.
@@ -1211,9 +1215,18 @@ class Aichess():
         with open('qTableWhites.txt') as fW:
             dataW = fW.read()
         self.qTableWhites = json.loads(dataW)
+
+        with open('numVisitedWhites.txt') as fNW:
+            dataNW = fNW.read()
+        self.numVisitedWhites = json.loads(dataNW)
+
         with open('qTableBlacks.txt') as fB:
             dataB = fB.read()
         self.qTableBlacks = json.loads(dataB)
+
+        with open('numVisitedBlacks.txt') as fNB:
+            dataNB = fNB.read()
+        self.numVisitedBlacks = json.loads(dataNB)
         return
 
     def saveQTable(self):
@@ -1221,10 +1234,22 @@ class Aichess():
             os.remove("qTableWhites.txt")
         with open('qTableWhites.txt', 'w') as data:
             data.write(json.dumps(self.qTableWhites))
+
+        if os.path.exists("numVisitedWhites.txt"):
+            os.remove("numVisitedWhites.txt")
+        with open('numVisitedWhites.txt', 'w') as data:
+            data.write(json.dumps(self.numVisitedWhites))
+
         if os.path.exists("qTableBlacks.txt"):
             os.remove("qTableBlacks.txt")
         with open('qTableBlacks.txt', 'w') as data:
             data.write(json.dumps(self.qTableBlacks))
+
+        if os.path.exists("numVisitedBlacks.txt"):
+            os.remove("numVisitedBlacks.txt")
+        with open('numVisitedBlacks.txt', 'w') as data:
+            data.write(json.dumps(self.numVisitedBlacks))
+
         return
 
 
