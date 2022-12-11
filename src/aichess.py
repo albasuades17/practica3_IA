@@ -13,6 +13,8 @@ import numpy as np
 
 import chess
 
+import json
+
 RawStateType = List[List[List[int]]]
 
 from itertools import permutations
@@ -891,9 +893,7 @@ class Aichess():
 
         print(path)
 
-    def recompensaBW(self, currentState, previousState, torn):
-        bkState = self.getPieceState(currentState, 12)
-        wkState = self.getPieceState(currentState, 6)
+    def recompensaBW(self, currentState, torn):
         brState = self.getPieceState(currentState, 8)
         wrState = self.getPieceState(currentState, 2)
 
@@ -901,7 +901,7 @@ class Aichess():
             #Si el rei negre està en check mate
             if self.isWatchedBk(currentState):
                 #Retornem recompensa i com que és un estat terminal, True.
-                return 1000, True
+                return 5000, True
             #Estem en empat
             else:
                 #Retornem recompensa i com que és un estat terminal, True.
@@ -911,7 +911,7 @@ class Aichess():
             # Si el rei blanc està en check mate
             if self.isWatchedWk(currentState):
                 # Retornem recompensa i com que és un estat terminal, True.
-                return 1000, True
+                return 5000, True
             # Estem en empat
             else:
                 # Retornem recompensa i com que és un estat terminal, True.
@@ -926,25 +926,8 @@ class Aichess():
                 return 2, False
         #Les dues torres estan mortes
         if brState == None and wrState == None:
-            """
-            previousBrState = self.getPieceState(previousState,8)
-            #Les blanques han matat la torre negra.
-            if previousBrState != None:
-                if torn:
-                    return 50, True
-                else:
-                    return -1000, True
-
-            previousWrState = self.getPieceState(previousState,2)
-            if previousWrState != None:
-                if not torn:
-                    return 50, True
-                else:
-                    return -1000, True
-
-            """
             #Rei negre ha matat a la torre blanca. S'acaba la partida i compta com "mini-victòria" per les negres.
-            return 100, True
+            return 400, True
         if brState == None:
             #Si les blanques maten la torre negre, ara els costa menys sobreviure.
             if torn:
@@ -955,7 +938,7 @@ class Aichess():
                 return 0.5, False
         if wrState == None:
             #Les negres han matat la torre blanca. Per tant, és torn de les negres i 'mini-victòria' per les negres
-            return 100, True
+            return 400, True
 
     def getCompleteNextStates(self, color, currentState):
         listNextStates = []
@@ -992,26 +975,25 @@ class Aichess():
     def towersAlive(self, currentState):
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
 
-    def propagation(self, listMovements, listMovementsStrings, alpha, gamma):
+    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, torn):
         numMoves = len(listMovementsStrings)
         rangePropagation = numMoves - 1
         for j in range(1, rangePropagation):
-            tornPropagation = False
+            tornPropagation = not torn
             for i in range(1, j+1):
                 prevMoveString = listMovementsStrings[numMoves - 2 - i]
                 nextMoveString = listMovementsStrings[numMoves - 1 - i]
-                prevMove = listMovements[numMoves - 2 - i]
                 nextMove = listMovements[numMoves - 1 - i]
                 if tornPropagation:
                     qValue = self.qTableWhites[prevMoveString][nextMoveString]
-                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
+                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation)
                     sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableBlacks)
                     qValue = (1 - alpha) * qValue + alpha * sample
                     self.qTableWhites[prevMoveString][nextMoveString] = qValue
                     self.numVisitedWhites[prevMoveString][nextMoveString] += 1
                 else:
                     qValue = self.qTableBlacks[prevMoveString][nextMoveString]
-                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, prevMove, tornPropagation)
+                    recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation)
                     sample = recompensaP - gamma * self.maxQValue(nextMoveString, self.qTableWhites)
                     qValue = (1 - alpha) * qValue + alpha * sample
                     self.qTableBlacks[prevMoveString][nextMoveString] = qValue
@@ -1072,8 +1054,9 @@ class Aichess():
                 numMaxMovimentsTowerDead = 80
                 if indexList == len(listMiddleStates) - 1 and numCheckMates == 3:
                     middleExploration = False
+                    self.loadQTable()
                 else:
-                    if numCheckMates == 6:
+                    if numCheckMates == 10:
                         indexList += 1
                         numCheckMates = 0
                         print("\n")
@@ -1113,7 +1096,7 @@ class Aichess():
                     self.numVisitedWhites[currentString][nextString]+=1
 
                     # Obtenim la recompensa associada a l'estat nextState, i si és un estat terminal
-                    recompensa, isFinalState = self.recompensaBW(nextState, currentState, torn)
+                    recompensa, isFinalState = self.recompensaBW(nextState, torn)
 
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                     # Ja que és un estat terminal.
@@ -1143,7 +1126,7 @@ class Aichess():
                             #Comptem els número de checkMates que s'han fet seguits.
                             numCheckMates +=1
                             print("\n\nCHECKMATE\n\n")
-                            self.propagation(listMovements, listMovementsStrings, alpha, gamma)
+                            self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
                             ###########
                             self.newBoardSim(nextState)
                             ###########
@@ -1168,7 +1151,7 @@ class Aichess():
                     self.numVisitedBlacks[currentString][nextString]+=1
 
                     # Obtenim la recompensa associada a l'estat nextState i si és un estat terminal.
-                    recompensa, isFinalState = self.recompensaBW(nextState, currentState, torn)
+                    recompensa, isFinalState = self.recompensaBW(nextState, torn)
 
                     # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
                     # Ja que és un estat terminal.
@@ -1187,9 +1170,9 @@ class Aichess():
 
                         currentState, currentString = nextState, nextString
                         numMovimentsNegres += 1
-
-                    # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
+                    #Les negres han matat la torre blanca.
                     else:
+                        self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
                         ##########
                         self.newBoardSim(nextState)
                         ##########
@@ -1216,6 +1199,22 @@ class Aichess():
 
         self.reconstructPathBW(initialState)
         return 0
+
+    def loadQTable(self):
+        with open('qTableWhites.txt') as fW:
+            dataW = fW.read()
+        self.qTableWhites = json.loads(dataW)
+        with open('qTableBlacks.txt') as fB:
+            dataB = fB.read()
+        self.qTableBlacks = json.loads(dataB)
+        return
+
+    def saveQTable(self):
+        with open('qTableWhites.txt', 'w') as data:
+            data.write(str(self.qTableWhites))
+        with open('qTableBlacks.txt', 'w') as data:
+            data.write(str(self.qTableBlacks))
+        return
 
 
 
