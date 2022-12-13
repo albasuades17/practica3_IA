@@ -58,7 +58,8 @@ class Aichess():
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
-        self.taulellCheckMates = [[[0,0,6],]]
+        self.kValue = 250
+        self.errorValue = 0.5
 
     """
     def makerCheckMates(self):
@@ -735,10 +736,10 @@ class Aichess():
             currentDict = self.qTableBlacks[currentString]
             numVisitedTable = self.numVisitedBlacks[currentString]
 
-        k = 500
+        k = self.kValue
         maxValue = float('-inf')
         listVisitedStates = currentDict.keys()
-        error = 3
+        error = self.errorValue
         listBestStates = []
 
         for state in listStates:
@@ -1027,7 +1028,7 @@ class Aichess():
         listMiddleStates = self.middleStatesList()
         middleExploration = False
 
-        loadQTable = False
+        loadQTable = True
         if loadQTable:
             checkMateExploration = False
             middleExploration = False
@@ -1081,6 +1082,11 @@ class Aichess():
                 numMaxMovimentsTowerDead = 90
                 self.newBoardSim(initialState)
                 currentState, currentString = initialState, initialString
+                if numIteracions > 35:
+                    print(self.qTableWhites[currentString])
+                    if '03x736072008' in self.qTableWhites[currentString].keys():
+                        print(self.qTableWhites[currentString]['03x736072008'])
+                        print(self.qTableBlacks['03x736072008'])
 
             torn = True
 
@@ -1152,8 +1158,11 @@ class Aichess():
 
                     listNextStates = self.getCompleteNextStates(torn, currentState)
 
+
                     # Triem un dels estats mitjançant exploració o explotació.
                     nextState, nextString = self.explorationFunction(listNextStates, currentState, torn)
+
+
                     listMovementsStrings.append(nextString)
                     listMovements.append(nextState)
 
@@ -1212,42 +1221,44 @@ class Aichess():
         return 0
 
     def loadQTable(self):
-        with open('qTableWhites.txt') as fW:
+        kValueEValue = 'K'+str(self.kValue) +'E'+ str(self.errorValue)
+        with open('qTableWhites'+kValueEValue+'.txt') as fW:
             dataW = fW.read()
         self.qTableWhites = json.loads(dataW)
 
-        with open('numVisitedWhites.txt') as fNW:
+        with open('numVisitedWhites'+kValueEValue+'.txt') as fNW:
             dataNW = fNW.read()
         self.numVisitedWhites = json.loads(dataNW)
 
-        with open('qTableBlacks.txt') as fB:
+        with open('qTableBlacks'+kValueEValue+'.txt') as fB:
             dataB = fB.read()
         self.qTableBlacks = json.loads(dataB)
 
-        with open('numVisitedBlacks.txt') as fNB:
+        with open('numVisitedBlacks'+kValueEValue+'.txt') as fNB:
             dataNB = fNB.read()
         self.numVisitedBlacks = json.loads(dataNB)
         return
 
     def saveQTable(self):
-        if os.path.exists("qTableWhites.txt"):
-            os.remove("qTableWhites.txt")
-        with open('qTableWhites.txt', 'w') as data:
+        kValueEValue = 'K'+str(self.kValue) +'E'+ str(self.errorValue)
+        if os.path.exists("qTableWhites"+kValueEValue+".txt"):
+            os.remove("qTableWhites"+kValueEValue+".txt")
+        with open('qTableWhites'+kValueEValue+'.txt', 'w') as data:
             data.write(json.dumps(self.qTableWhites))
 
-        if os.path.exists("numVisitedWhites.txt"):
-            os.remove("numVisitedWhites.txt")
-        with open('numVisitedWhites.txt', 'w') as data:
+        if os.path.exists("numVisitedWhites"+kValueEValue+".txt"):
+            os.remove("numVisitedWhites"+kValueEValue+".txt")
+        with open('numVisitedWhites'+kValueEValue+'.txt', 'w') as data:
             data.write(json.dumps(self.numVisitedWhites))
 
-        if os.path.exists("qTableBlacks.txt"):
-            os.remove("qTableBlacks.txt")
-        with open('qTableBlacks.txt', 'w') as data:
+        if os.path.exists("qTableBlacks"+kValueEValue+".txt"):
+            os.remove("qTableBlacks"+kValueEValue+".txt")
+        with open('qTableBlacks'+kValueEValue+'.txt', 'w') as data:
             data.write(json.dumps(self.qTableBlacks))
 
-        if os.path.exists("numVisitedBlacks.txt"):
-            os.remove("numVisitedBlacks.txt")
-        with open('numVisitedBlacks.txt', 'w') as data:
+        if os.path.exists("numVisitedBlacks"+kValueEValue+".txt"):
+            os.remove("numVisitedBlacks"+kValueEValue+".txt")
+        with open('numVisitedBlacks'+kValueEValue+'.txt', 'w') as data:
             data.write(json.dumps(self.numVisitedBlacks))
 
         return
@@ -1299,8 +1310,9 @@ if __name__ == "__main__":
     aichess.chess.boardSim.print_board()
 
     #print(aichess.BWStateToString(aichess.getCurrentState()))
-    aichess.QlearningWhitesVsBlacks(0.9, 0.1)
+    #aichess.QlearningWhitesVsBlacks(0.9, 0.1)
     #aichess.Qlearning(0.3, 0.9, 0.1)
+
 
 
 
