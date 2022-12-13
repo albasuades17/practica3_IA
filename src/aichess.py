@@ -934,7 +934,7 @@ class Aichess():
             #Si les blanques just han matat la torre negra, és torn de les blanques, recompensa positiva
             if previousBrState != None:
                 return 100, False
-            #Si la torre negra ja està morta, ara els costa menys sobreviure.
+            #Si la torre negra ja està morta, a les blanques ara els costa menys sobreviure.
             if torn:
                 return -0.5, False
             #Ens interessa que les negres intentin sobreviure el màxim possible,
@@ -1066,6 +1066,7 @@ class Aichess():
                 numMaxMovimentsTowerDead = 80
                 if indexList == len(listMiddleStates) - 1 and numCheckMates == 3:
                     middleExploration = False
+                    numIteracions = 0
                     self.saveQTable()
                 else:
                     if numCheckMates == 10:
@@ -1082,11 +1083,14 @@ class Aichess():
                 numMaxMovimentsTowerDead = 90
                 self.newBoardSim(initialState)
                 currentState, currentString = initialState, initialString
+
                 if numIteracions > 35:
                     print(self.qTableWhites[currentString])
                     if '03x736072008' in self.qTableWhites[currentString].keys():
                         print(self.qTableWhites[currentString]['03x736072008'])
                         print(self.qTableBlacks['03x736072008'])
+                if numIteracions%500 == 0:
+                    self.saveQTable()
 
             torn = True
 
@@ -1310,7 +1314,7 @@ if __name__ == "__main__":
     aichess.chess.boardSim.print_board()
 
     #print(aichess.BWStateToString(aichess.getCurrentState()))
-    #aichess.QlearningWhitesVsBlacks(0.9, 0.1)
+    aichess.QlearningWhitesVsBlacks(0.1, 0.9)
     #aichess.Qlearning(0.3, 0.9, 0.1)
 
 
