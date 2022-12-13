@@ -58,7 +58,7 @@ class Aichess():
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
-        self.kValue = 250
+        self.kValue = 400
         self.errorValue = 0.5
 
     """
@@ -230,8 +230,8 @@ class Aichess():
             for state in listStates:
                 listClassStates[i].append(state[1])
                 i += 1
-        #Transformem respecte diagonal
-        if bkState[1] < bkState[0]:
+        #Transformem respecte diagonal si la posició transformada del rei està per sota la diagonal.
+        if listClassStates[0][1] < listClassStates[0][0]:
             i = 0
             for state in listStates:
                 listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], listClassStates[i][0]
@@ -853,18 +853,25 @@ class Aichess():
         currentState = initialState
         currentString = self.BWStateToString(initialState)
         checkMate = False
+        bucle = False
+        visitedStates = [currentState]
 
         #Afegim l'estat inicial
         path = [initialState]
         torn = False
-        while not checkMate:
+        while not checkMate and not bucle:
             self.newBoardSim(currentState)
-            nextStates = self.getCompleteNextStates(torn, currentState)
+            self.chess.board.print_board()
             torn = not torn
+            nextStates = self.getCompleteNextStates(torn, currentState)
             if torn:
                 currentDict = self.qTableWhites[currentString]
+                print("Qtable", currentDict)
+                print("NumVisited", self.numVisitedWhites[currentString])
             else:
                 currentDict = self.qTableBlacks[currentString]
+                print("Qtable", currentDict)
+                print("NumVisited", self.numVisitedBlacks[currentString])
             maxQ = -100000
             maxState = None
             maxString = None
@@ -872,26 +879,33 @@ class Aichess():
             #Mirem quin és el següent estat que té major Q-value
             for state in nextStates:
                 stateString = self.BWStateToString(state)
+                print(state, stateString)
+
                 qValue = currentDict[stateString]
                 if maxQ < qValue:
                     maxQ = qValue
                     maxState = state
                     maxString = stateString
 
-            #Quan l'obtenim l'agefim al path
-            path.append(maxState)
-            movement = self.getMovement(currentState,maxState)
-            #Fem el moviment corresponent
-            self.chess.move(movement[0],movement[1])
-            self.chess.board.print_board()
-            currentString = maxString
-            currentState = maxState
-            #Quan ja s'aconsegueix fer check mate, s'acaba l'execució.
-            if torn and self.isBlackInCheckMate(maxState):
-                checkMate = True
-            if not torn and self.isWhiteInCheckMate(maxState):
-                checkMate = True
+            if maxState in visitedStates:
+                bucle = True
+            else:
+                #Quan l'obtenim l'agefim al path
+                path.append(maxState)
+                movement = self.getMovement(currentState,maxState)
+                #Fem el moviment corresponent
+                self.chess.move(movement[0],movement[1])
+                #self.chess.board.print_board()
+                currentString = maxString
+                currentState = maxState
+                #Quan ja s'aconsegueix fer check mate, s'acaba l'execució.
+                if torn and self.isBlackInCheckMate(maxState):
+                    checkMate = True
+                if not torn and self.isWhiteInCheckMate(maxState):
+                    checkMate = True
 
+        if bucle:
+            print("Already visited:", maxState)
         print(path)
 
     def recompensaBW(self, currentState, torn, previousState):
@@ -1049,6 +1063,7 @@ class Aichess():
                 if indexList == len(listCheckMates) - 1 and numCheckMates == 2:
                     checkMateExploration = False
                     middleExploration = True
+                    self.saveQTable()
                     numCheckMates = 0
                     indexList = 0
                 else:
@@ -1314,7 +1329,7 @@ if __name__ == "__main__":
     aichess.chess.boardSim.print_board()
 
     #print(aichess.BWStateToString(aichess.getCurrentState()))
-    aichess.QlearningWhitesVsBlacks(0.1, 0.9)
+    #aichess.QlearningWhitesVsBlacks(0.1, 0.9)
     #aichess.Qlearning(0.3, 0.9, 0.1)
 
 
