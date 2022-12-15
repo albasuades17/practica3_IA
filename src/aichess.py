@@ -58,7 +58,7 @@ class Aichess():
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
-        self.kValue = 400
+        self.kValue = 499
         self.errorValue = 0.5
 
     """
@@ -1035,6 +1035,7 @@ class Aichess():
         numIteracions = 0
         numCaminsConvergents = 0
         numCheckMates = 0
+        numIteracionsUltimate = 0
 
         indexList = 0
         listCheckMates = self.checkMateList()
@@ -1045,8 +1046,9 @@ class Aichess():
         loadQTable = True
         if loadQTable:
             checkMateExploration = False
-            middleExploration = False
+            middleExploration = True
             self.loadQTable()
+            numIteracions = 2500
 
 
         while numCaminsConvergents < 10:
@@ -1078,28 +1080,32 @@ class Aichess():
                     self.newBoardSim(currentState)
 
             if middleExploration:
-                numMaxMovimentsTowerDead = 80
-                if indexList == len(listMiddleStates) - 1 and numCheckMates == 3:
+                numMaxMovimentsTowerDead = 60
+                if indexList == len(listMiddleStates) - 1 and numCaminsConvergents >= 10:
+                    numCaminsConvergents = 0
                     middleExploration = False
-                    numIteracions = 0
+
                     self.saveQTable()
                 else:
-                    if numCheckMates == 10:
+                    if numCaminsConvergents >= 10:
                         indexList += 1
-                        numCheckMates = 0
+                        numCaminsConvergents = 0
                         print("\n")
                         print("MIDDLE INDEX", indexList)
                         print("\n")
                     currentState = listMiddleStates[indexList]
                     currentString = self.BWStateToString(currentState)
                     self.newBoardSim(currentState)
+                if numIteracions%500 == 0:
+                    self.saveQTable()
 
             if not middleExploration and not checkMateExploration:
-                numMaxMovimentsTowerDead = 90
+                numMaxMovimentsTowerDead = 70
                 self.newBoardSim(initialState)
                 currentState, currentString = initialState, initialString
+                numIteracionsUltimate += 1
 
-                if numIteracions > 35:
+                if numIteracionsUltimate > 35:
                     print(self.qTableWhites[currentString])
                     if '03x736072008' in self.qTableWhites[currentString].keys():
                         print(self.qTableWhites[currentString]['03x736072008'])
@@ -1329,8 +1335,10 @@ if __name__ == "__main__":
     aichess.chess.boardSim.print_board()
 
     #print(aichess.BWStateToString(aichess.getCurrentState()))
-    #aichess.QlearningWhitesVsBlacks(0.1, 0.9)
+    aichess.QlearningWhitesVsBlacks(0.1, 0.9)
     #aichess.Qlearning(0.3, 0.9, 0.1)
+    #aichess.loadQTable()
+    #aichess.reconstructPathBW(aichess.getCurrentState())
 
 
 
