@@ -58,7 +58,7 @@ class Aichess():
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
-        self.kValue = 499
+        self.kValue = 400
         self.errorValue = 0.5
 
     """
@@ -155,15 +155,18 @@ class Aichess():
         return listCheckMates
 
     def middleStatesList(self):
+        #Posem estats on encara no hi hagi la torre negra perquè els dos jugadors aprenguin a jugar
+        #En els estats proposats es va incrementant la dificultat.
+        #També concretem els moviments màxims que deixarem
         listMiddleStates = []
-        listMiddleStates.append([[0, 2, 12], [1, 0, 2], [3, 4, 6]])
-        listMiddleStates.append([[0, 1, 12], [1, 6, 2], [3, 4, 6]])
-        listMiddleStates.append([[1, 2, 12], [2, 5, 2], [4, 4, 6]])
-        listMiddleStates.append([[1, 1, 12], [2, 6, 2], [4, 6, 6]])
-        listMiddleStates.append([[2, 3, 12], [3, 6, 2], [5, 4, 6]])
-        listMiddleStates.append([[2, 5, 12], [3, 7, 2], [7, 4, 6]])
-        listMiddleStates.append([[2, 4, 12], [0, 7, 2], [7, 4, 6]])
-        listMiddleStates.append([[2, 6, 12], [0, 7, 2], [7, 4, 6]])
+        listMiddleStates.append(([[0, 2, 12], [1, 0, 2], [3, 4, 6]], 25))
+        listMiddleStates.append(([[0, 1, 12], [1, 6, 2], [3, 4, 6]], 25))
+        listMiddleStates.append(([[1, 2, 12], [2, 4, 2], [4, 4, 6]], 45))
+        listMiddleStates.append(([[1, 1, 12], [2, 6, 2], [4, 6, 6]], 45))
+        listMiddleStates.append(([[2, 3, 12], [3, 6, 2], [5, 4, 6]], 60))
+        listMiddleStates.append(([[2, 5, 12], [3, 7, 2], [7, 4, 6]], 65))
+        listMiddleStates.append(([[2, 4, 12], [0, 7, 2], [7, 4, 6]], 70))
+        listMiddleStates.append(([[2, 6, 12], [0, 7, 2], [7, 4, 6]], 70))
         return listMiddleStates
 
     def stateToString(self, whiteState):
@@ -1034,6 +1037,7 @@ class Aichess():
         error = 0.15
         numIteracions = 0
         numCaminsConvergents = 0
+        numCaminsConvergentsMiddle = 0
         numCheckMates = 0
         numIteracionsUltimate = 0
 
@@ -1043,15 +1047,15 @@ class Aichess():
         listMiddleStates = self.middleStatesList()
         middleExploration = False
 
-        loadQTable = True
+        loadQTable = False
         if loadQTable:
             checkMateExploration = False
             middleExploration = True
             self.loadQTable()
-            numIteracions = 2500
+            numIteracions = 0
 
-
-        while numCaminsConvergents < 10:
+        #Només sortirem quan tinguem suficients camins convergents i estem a la configuració final.
+        while numCaminsConvergents < 10 or checkMateExploration or middleExploration:
             numIteracions += 1
             finalState = False
             numMovimentsBlanques = 0
@@ -1066,7 +1070,7 @@ class Aichess():
                     checkMateExploration = False
                     middleExploration = True
                     self.saveQTable()
-                    numCheckMates = 0
+                    numCaminsConvergents = 0
                     indexList = 0
                 else:
                     if numCheckMates == 3:
@@ -1093,7 +1097,9 @@ class Aichess():
                         print("\n")
                         print("MIDDLE INDEX", indexList)
                         print("\n")
-                    currentState = listMiddleStates[indexList]
+                        self.saveQTable()
+                    currentState = listMiddleStates[indexList][0]
+                    numMaxMovimentsTowerDead = listMiddleStates[indexList][1]
                     currentString = self.BWStateToString(currentState)
                     self.newBoardSim(currentState)
                 if numIteracions%500 == 0:
