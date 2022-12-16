@@ -47,82 +47,14 @@ class Aichess():
             self.chess = chess.Chess([], False)
 
         self.listNextStates = []
-        self.listVisitedStates = []
-        self.listVisitedSituations = []
-        self.pathToTarget = []
-        self.currentStateW = self.chess.boardSim.currentStateW;
-        self.depthMax = 8;
-        self.checkMate = False
+        self.currentStateW = self.chess.boardSim.currentStateW
         self.qTable = {}
         self.qTableWhites = {}
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
-        self.kValue = 400
+        self.kValue = 500
         self.errorValue = 0.5
-
-    """
-    def makerCheckMates(self):
-        columnaBk = random.randint(0,3)
-        bkState = [0,columnaBk,12]
-        wkState = [2,columnaBk,6]
-        #Per tant, la torre no es pot posar a l'esquerra del rei negre
-        if columnaBk < 2:
-            wrState = [1,random.randint(columnaBk+2,7),2]
-        else:
-            num = random.randint(0,4)
-            if num <= columnaBk-2:
-                wrState = [random.randint(1,7), num, 2]
-            else:
-                wrState = [random.randint(1,7), num+3, 2]
-
-        return [wkState,bkState,wrState]
-    """
-    """
-    def checkMateCheater(self, checkMateValue):
-        for columnaBk in range(0, 4):
-            bkState = [0, columnaBk, 12]
-            wkState = [2, columnaBk, 6]
-            if columnaBk < 2:
-                for columnaWr in range(columnaBk + 2, 8):
-                    for filaWr in range(1, 8):
-                        wrState = [filaWr, columnaWr, 2]
-                        wrStateWin = [0, columnaWr, 2]
-                        state = [wkState, bkState, wrState]
-                        stateWin = [wkState, bkState, wrStateWin]
-                        stringState = self.BWStateToString(state)
-                        stringStateWin = self.BWStateToString(stateWin)
-                        self.qTableWhites[stringState] = {}
-                        self.numVisitedWhites[stringState] = {}
-                        self.qTableWhites[stringState][stringStateWin] = checkMateValue
-                        self.numVisitedWhites[stringState][stringStateWin] = 1
-            else:
-                for columnaWr in range(0, columnaBk -1):
-                    for filaWr in range(1,8):
-                        wrState = [filaWr, columnaWr, 2]
-                        wrStateWin = [0, columnaWr, 2]
-                        state = [wkState, bkState, wrState]
-                        stateWin = [wkState, bkState, wrStateWin]
-                        stringState = self.BWStateToString(state)
-                        stringStateWin = self.BWStateToString(stateWin)
-                        self.qTableWhites[stringState] = {}
-                        self.numVisitedWhites[stringState] = {}
-                        self.qTableWhites[stringState][stringStateWin] = checkMateValue
-                        self.numVisitedWhites[stringState][stringStateWin] = 1
-                for columnaWr in range(columnaBk + 2, 8):
-                    for filaWr in range(1, 8):
-                        wrState = [filaWr, columnaWr, 2]
-                        wrStateWin = [0, columnaWr, 2]
-                        state = [wkState, bkState, wrState]
-                        stateWin = [wkState, bkState, wrStateWin]
-                        stringState = self.BWStateToString(state)
-                        stringStateWin = self.BWStateToString(stateWin)
-                        self.qTableWhites[stringState] = {}
-                        self.numVisitedWhites[stringState] = {}
-                        self.qTableWhites[stringState][stringStateWin] = checkMateValue
-                        self.numVisitedWhites[stringState][stringStateWin] = 1
-    
-    """
 
     def checkMateList(self):
         #Fem una llista d'estats on en un moviment de la torre s'arriba a un checkMate
@@ -157,7 +89,7 @@ class Aichess():
     def middleStatesList(self):
         #Posem estats on encara no hi hagi la torre negra perquè els dos jugadors aprenguin a jugar
         #En els estats proposats es va incrementant la dificultat.
-        #També concretem els moviments màxims que deixarem
+        #També concretem els moviments màxims que deixarem fer per cada  configuració.
         listMiddleStates = []
         listMiddleStates.append(([[0, 2, 12], [1, 0, 2], [3, 4, 6]], 25))
         listMiddleStates.append(([[0, 1, 12], [1, 6, 2], [3, 4, 6]], 25))
@@ -170,7 +102,6 @@ class Aichess():
         return listMiddleStates
 
     def stateToString(self, whiteState):
-        stringState = ""
         wkState = self.getPieceState(whiteState,6)
         wrState = self.getPieceState(whiteState,2)
         stringState = str(wkState[0])+","+str(wkState[1])+","
@@ -187,42 +118,30 @@ class Aichess():
 
         return whiteState
 
-    """
-    def BWStateToString2(self, state):
-        stringState = ""
-        wrState = self.getPieceState(state,2)
-        if wrState != None:
-            stringState += str(wrState[0])+str(wrState[1])+str(2)
-        wkState = self.getPieceState(state, 6)
-        stringState += str(wkState[0]) + str(wkState[1]) + str(6)
-
-        brState = self.getPieceState(state, 8)
-        if brState != None:
-            stringState += str(brState[0]) + str(brState[1]) + str(8)
-        bkState = self.getPieceState(state, 12)
-        stringState += str(bkState[0]) + str(bkState[1]) + "x"
-        return stringState
-    """
     def BWStateToString(self, currentState):
-        stringState = ""
+        #Agafem l'estat de les peces
         wrState = self.getPieceState(currentState, 2)
         brState = self.getPieceState(currentState, 8)
         bkState = self.getPieceState(currentState, 12)
         wkState = self.getPieceState(currentState, 6)
+
+        #Afegim les peces al listStates
         listStates = [bkState, wkState]
         listClassStates = []
         if wrState != None:
             listStates.append(wrState)
         if brState != None:
             listStates.append(brState)
-        #Transformem respecte eix x
+        #A partir d'aquí crearem un representant únic per qualsevol configuració de les peces
+        #Transformem respecte eix x si el rei negre està més abaix de la fila 3.
+        #Fem la transformació per totes les peces, per tal que sigui un estat equivalent.
         if bkState[0] > 3:
             for state in listStates:
                 listClassStates.append([7-state[0]])
         else:
             for state in listStates:
                 listClassStates.append([state[0]])
-        #Transformem respecte eix y
+        #Transformem respecte eix y si el rei negre está més endavant de la columna 3.
         if bkState[1] > 3:
             i = 0
             for state in listStates:
@@ -244,12 +163,14 @@ class Aichess():
         classBk = listClassStates[0]
         lenStates = len(listClassStates)
         if classBk[0] == classBk[1]:
+            #Primer ho farem respecte l'estat del rei blanc
             classWk = listClassStates[1]
             if classWk[0] > classWk[1]:
                 i = 0
                 for state in listStates:
                     listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], listClassStates[i][0]
                     i += 1
+            #Si l'estat del rei blanc també està a la diagonal, fixarem l'estat total amb una de les dues torres.
             elif classWk[0] == classWk[1]:
                 if lenStates > 2:
                     classPiece = listClassStates[2]
@@ -267,7 +188,7 @@ class Aichess():
                                     listClassStates[i][0], listClassStates[i][1] = listClassStates[i][1], \
                                                                                    listClassStates[i][0]
                                     i += 1
-
+        #Un cop tenim l'estat representant, l'afem a piecesStateClass amb la numeració de cada peça
         piecesStateClass = [listClassStates[0]+[12],listClassStates[1]+[6]]
         i = 2
         if wrState != None:
@@ -275,7 +196,7 @@ class Aichess():
             i+=1
         if brState != None:
             piecesStateClass.append(listClassStates[i] + [8])
-
+        #Convertim aquesta configuració en una string única (tenim un ordre determinat de les peces)
         stringListStates = ""
         for state in piecesStateClass:
             pieceNumString = str(state[2])
@@ -283,38 +204,6 @@ class Aichess():
                 pieceNumString = "x"
             stringListStates += str(state[0]) + str(state[1]) + pieceNumString
         return stringListStates
-
-    def stringToBWState(self, string):
-        state = []
-        for i in range(0,len(string),3):
-            numPiece = string[i+2]
-            if numPiece == "x":
-                numPiece = 12
-            else: numPiece = int(numPiece)
-            state.append([int(string[i]), int(string[i+1]), numPiece])
-        return state
-
-    def copyState(self, state):
-        copyState = []
-        for piece in state:
-            copyState.append(piece.copy())
-        return copyState
-
-    def isVisitedSituation(self, color, mystate):
-        if (len(self.listVisitedSituations) > 0):
-            perm_state = list(permutations(mystate))
-
-            isVisited = False
-            for j in range(len(perm_state)):
-
-                for k in range(len(self.listVisitedSituations)):
-                    if self.isSameState(list(perm_state[j]), self.listVisitedSituations.__getitem__(k)[1]) and color == \
-                            self.listVisitedSituations.__getitem__(k)[0]:
-                        isVisited = True
-
-            return isVisited
-        else:
-            return False
 
     def getCurrentStateW(self):
 
@@ -333,43 +222,8 @@ class Aichess():
 
         return self.listNextStates
 
-    def isSameState(self, a, b):
-
-        isSameState1 = True
-        # a and b are lists
-        for k in range(len(a)):
-
-            if a[k] not in b:
-                isSameState1 = False
-
-        isSameState2 = True
-        # a and b are lists
-        for k in range(len(b)):
-
-            if b[k] not in a:
-                isSameState2 = False
-
-        isSameState = isSameState1 and isSameState2
-        return isSameState
-
-    def isVisited(self, mystate):
-
-        if (len(self.listVisitedStates) > 0):
-            perm_state = list(permutations(mystate))
-
-            isVisited = False
-            for j in range(len(perm_state)):
-
-                for k in range(len(self.listVisitedStates)):
-
-                    if self.isSameState(list(perm_state[j]), self.listVisitedStates[k]):
-                        isVisited = True
-
-            return isVisited
-        else:
-            return False
-
     def isWatchedBk(self, currentState):
+        #Veiem si el rei negre està amenaçat
         self.newBoardSim(currentState)
 
         bkPosition = self.getPieceState(currentState, 12)[0:2]
@@ -430,6 +284,8 @@ class Aichess():
         return False
 
     def isWatchedWk(self, currentState):
+        #Veiem si el rei blanc està amenaçat
+
         self.newBoardSim(currentState)
 
         wkPosition = self.getPieceState(currentState, 6)[0:2]
@@ -558,6 +414,7 @@ class Aichess():
         return [pieceState, pieceNextState]
 
     def isCheckMate(self, mystate):
+        #Check mate per l'exercici 1 (el rei negre està fixat a la posició [0,4]
         #posem els possibles estats on es produeixi check mate
         listCheckMateStates = [[[0,0,2],[2,4,6]],[[0,1,2],[2,4,6]],[[0,2,2],[2,4,6]],[[0,6,2],[2,4,6]],[[0,7,2],[2,4,6]]]
 
@@ -569,6 +426,7 @@ class Aichess():
         return False
 
     def recompensa(self, mystate):
+        #Recompensa per primer exercici
         if self.isCheckMate(mystate):
             return 100
 
@@ -595,13 +453,14 @@ class Aichess():
             if nextString not in currentDict.keys():
                 currentDict[nextString] = 0
             return nextState, nextString
-        #Fem exploració amb probabilitat 1 - epsilon
+        #Fem explotació amb probabilitat 1 - epsilon
         else:
             listBestStates = []
             maxValue = -10000
             currentDict = self.qTable[self.stateToString(currentState)]
             visitedStatesString = currentDict.keys()
             error = 0.01
+
             for state in listStates:
                 stateString = self.stateToString(state)
                 #Si l'estat no ha estat visitat, l'inicialitzem
@@ -631,8 +490,7 @@ class Aichess():
         #Guardem l'estat inicial de la taula
         initialState, initialString = currentState, currentString
         self.qTable[currentString] = {}
-        #Arribarem a aquest error al voltant de l'iteració 7500.
-        #Aleshores, podem afirmar que el Q-learning convergeix.
+        #Fixem l'error de les deltes, per veure quan convergeix la Q-table
         error = 0.15
         numIteracions = 0
         numCaminsConvergents = 0
@@ -696,7 +554,7 @@ class Aichess():
             currentState, currentString = initialState, initialString
         #Quan ja s'acaba l'execució, recuperem el camí que ens porta a una recompensa major.
         self.reconstructPath(initialState)
-        print(numIteracions)
+        print("Hem arribat amb",numIteracions, "iteracions")
 
     def reconstructPath(self, initialState):
         currentState = initialState
@@ -732,16 +590,20 @@ class Aichess():
 
     def explorationFunction(self, listStates, currentState, torn):
         currentString = self.BWStateToString(currentState)
+        #Si és el torn de les blanques
         if torn:
             currentDict = self.qTableWhites[currentString]
             numVisitedTable = self.numVisitedWhites[currentString]
+        # Si és el torn de les negres
         else:
             currentDict = self.qTableBlacks[currentString]
             numVisitedTable = self.numVisitedBlacks[currentString]
 
+        #Fixem una K. Fem una estimació del q-Value que podem arribar a tenir.
         k = self.kValue
         maxValue = float('-inf')
         listVisitedStates = currentDict.keys()
+        #Fixem un marge per agafar els estats màxims.
         error = self.errorValue
         listBestStates = []
 
@@ -752,6 +614,7 @@ class Aichess():
                 numVisitedTable[stringState] = 0
 
             qValue = currentDict[stringState]
+            #Agafem el nombre de vegades que hem visitat l'estat
             N = numVisitedTable[stringState]
             #Si no l'hem visitat, automàticament el visitem.
             if N == 0:
@@ -764,6 +627,7 @@ class Aichess():
             if estimatedValue > maxValue:
                 maxValue = estimatedValue
 
+        #En aquesta iteració agafarem tots els estat que estiguin dins del marge de l'error
         for state in listStates:
             stringState = self.BWStateToString(state)
             qValue = currentDict[stringState]
@@ -772,6 +636,7 @@ class Aichess():
             if estimatedValue >= maxValue - error and estimatedValue <= maxValue + error:
                 listBestStates.append((state, stringState))
 
+        #Agafem un estat arbritrari dins dels considerats.
         n = random.randint(0,len(listBestStates)-1)
         maxState, maxStateString = listBestStates[n][0], listBestStates[n][1]
         return maxState, maxStateString
@@ -856,25 +721,21 @@ class Aichess():
         currentState = initialState
         currentString = self.BWStateToString(initialState)
         checkMate = False
-        bucle = False
-        visitedStates = [currentState]
 
         #Afegim l'estat inicial
         path = [initialState]
         torn = False
-        while not checkMate and not bucle:
+        while not checkMate:
             self.newBoardSim(currentState)
             self.chess.board.print_board()
             torn = not torn
+            #Agafem els estats següents
             nextStates = self.getCompleteNextStates(torn, currentState)
             if torn:
                 currentDict = self.qTableWhites[currentString]
-                print("Qtable", currentDict)
-                print("NumVisited", self.numVisitedWhites[currentString])
             else:
                 currentDict = self.qTableBlacks[currentString]
-                print("Qtable", currentDict)
-                print("NumVisited", self.numVisitedBlacks[currentString])
+
             maxQ = -100000
             maxState = None
             maxString = None
@@ -882,7 +743,6 @@ class Aichess():
             #Mirem quin és el següent estat que té major Q-value
             for state in nextStates:
                 stateString = self.BWStateToString(state)
-                print(state, stateString)
 
                 qValue = currentDict[stateString]
                 if maxQ < qValue:
@@ -890,25 +750,23 @@ class Aichess():
                     maxState = state
                     maxString = stateString
 
-            if maxState in visitedStates:
-                bucle = True
-            else:
-                #Quan l'obtenim l'agefim al path
-                path.append(maxState)
-                movement = self.getMovement(currentState,maxState)
-                #Fem el moviment corresponent
-                self.chess.move(movement[0],movement[1])
-                #self.chess.board.print_board()
-                currentString = maxString
-                currentState = maxState
-                #Quan ja s'aconsegueix fer check mate, s'acaba l'execució.
-                if torn and self.isBlackInCheckMate(maxState):
-                    checkMate = True
-                if not torn and self.isWhiteInCheckMate(maxState):
-                    checkMate = True
 
-        if bucle:
-            print("Already visited:", maxState)
+            #Quan l'obtenim l'afegim al path
+            path.append(maxState)
+            movement = self.getMovement(currentState,maxState)
+            #Fem el moviment corresponent
+            self.chess.move(movement[0],movement[1])
+
+            currentString = maxString
+            currentState = maxState
+            #Quan ja s'aconsegueix fer check mate, s'acaba l'execució.
+            if torn and self.isBlackInCheckMate(maxState):
+                checkMate = True
+            if not torn and self.isWhiteInCheckMate(maxState):
+                checkMate = True
+
+        self.newBoardSim(currentState)
+        self.chess.board.print_board()
         print(path)
 
     def recompensaBW(self, currentState, torn, previousState):
@@ -961,9 +819,11 @@ class Aichess():
         if wrState == None:
             #Les negres han matat la torre blanca. Per tant, és torn de les negres i 'mini-victòria' per les negres
             return 400, True
+        return
 
     def getCompleteNextStates(self, color, currentState):
         listNextStates = []
+        #Si són les blanques
         if color:
             blackState = self.getBlackState(currentState)
             brState = self.getPieceState(currentState, 8)
@@ -993,13 +853,49 @@ class Aichess():
 
         return listNextStates
 
-
     def towersAlive(self, currentState):
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
 
-    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, torn):
+    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
+        #Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
+        #Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
+        numMoves = len(listMovementsStrings)
+        recompensaAcumulada = 0
+
+        for j in range (numMoves-1, 0, -1):
+            prevMoveString = listMovementsStrings[j-1]
+            nextMoveString = listMovementsStrings[j]
+            prevMove = listMovements[j-1]
+            nextMove = listMovements[j]
+
+            if tornPropagation:
+                currentDict = self.qTableWhites[prevMoveString]
+                numVisitedTable = self.numVisitedWhites[prevMoveString]
+            # Si és el torn de les negres
+            else:
+                currentDict = self.qTableBlacks[prevMoveString]
+                numVisitedTable = self.numVisitedBlacks[prevMoveString]
+
+            qValue = currentDict[nextMoveString]
+            recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation, prevMove)
+            recompensaAcumulada = recompensaP + gamma * (recompensaAcumulada)
+            qValue = (1 - alpha) * qValue + alpha * recompensaAcumulada
+            currentDict[nextMoveString] = qValue
+            numVisitedTable[nextMoveString] += 1
+
+            tornPropagation = not tornPropagation
+
+        return
+
+    def propagation2(self, listMovements, listMovementsStrings, alpha, gamma, torn):
+        #Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
+        #Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
         numMoves = len(listMovementsStrings)
         rangePropagation = numMoves - 1
+        #Anem propagant els Q-values de tots els estats del camí seguit.
+        #Per fer-ho, comencem per l'últim estat abans de fer check mate, i actualitzem el seu Q-value
+        #Després considerem l'estat d'abans d'aquest i aquest mateix, i actualitzaem els seus Q-values.
+        #Es fa això successivament, fins arribar a actualitzar des del primer moviment, fins l'últim.
         for j in range(1, rangePropagation):
             tornPropagation = not torn
             for i in range(1, j+1):
@@ -1066,7 +962,7 @@ class Aichess():
 
             if checkMateExploration:
                 numMaxMovimentsTowerDead = 25
-                if indexList == len(listCheckMates) - 1 and numCheckMates == 2:
+                if indexList == len(listCheckMates) - 1 and numCheckMates == 3:
                     checkMateExploration = False
                     middleExploration = True
                     self.saveQTable()
@@ -1344,7 +1240,7 @@ if __name__ == "__main__":
     aichess.QlearningWhitesVsBlacks(0.1, 0.9)
     #aichess.Qlearning(0.3, 0.9, 0.1)
     #aichess.loadQTable()
-    #aichess.reconstructPathBW(aichess.getCurrentState())
+    #aichess.reconstructPathBW([[0, 2, 12], [1, 0, 2], [3, 4, 6]])
 
 
 
