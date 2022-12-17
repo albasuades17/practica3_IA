@@ -53,7 +53,7 @@ class Aichess():
         self.qTableBlacks = {}
         self.numVisitedWhites = {}
         self.numVisitedBlacks = {}
-        self.kValue = 500
+        self.kValue = 0
         self.errorValue = 0.5
 
     def checkMateList(self):
@@ -641,23 +641,38 @@ class Aichess():
         maxState, maxStateString = listBestStates[n][0], listBestStates[n][1]
         return maxState, maxStateString
 
-    def epsilonStateBW2(self, epsilon, listStates, currentState, torn):
+    def epsilonStateBW(self, epsilon, listStates, currentState, torn):
         x = random.uniform(0,1)
         currentString = self.BWStateToString(currentState)
+
         if torn:
             currentDict = self.qTableWhites[currentString]
             numVisitedTable = self.numVisitedWhites[currentString]
         else:
             currentDict = self.qTableBlacks[currentString]
             numVisitedTable = self.numVisitedBlacks[currentString]
+
+        visitedStatesString = currentDict.keys()
+
+
         #Fem exploració amb probabilitat epsilon
         if x < epsilon:
+            n = random.randint(0, len(listStates) - 1)
+            randomState = listStates[n]
+            randomStateString = self.BWStateToString(randomState)
+            if randomStateString not in visitedStatesString:
+                currentDict[randomStateString] = 0
+                numVisitedTable[randomStateString] = 0
+            return randomState, randomStateString
+
+            """
             leastVisitedStates = []
             minValue = float('inf')
             error = 20
-            visitedStatesString = currentDict.keys()
+            #Un primer bucle per trobar el mínim valor
             for state in listStates:
                 stateString = self.BWStateToString(state)
+                stringsOfStates.append(stateString)
                 # Si l'estat no ha estat visitat, l'inicialitzem
                 if stateString not in visitedStatesString:
                     currentDict[stateString] = 0
@@ -665,35 +680,29 @@ class Aichess():
                     numVisitedTable[stateString] = 0
 
                 N = numVisitedTable[stateString]
+                if N < minValue:
+                    minValue = N
+            #Un segon bucle per trobar els estats menys visitats
+            for string in stringsOfStates:
+                N = numVisitedTable[string]
                 # Valorem si el valor es troba dins d'un marge d'error del menor valor trobat
                 # En cas afirmatiu, l'afegim als estats menys visitats
                 if N <= minValue + error and N >= minValue - error:
-                    leastVisitedStates.append(state)
-                # Si el valor está fora de rang i és major que el major valor trobat, passa a ser el valor
-                # màxim.
-                elif N < minValue:
-                    minValue = N
-                    leastVisitedStates.clear()
                     leastVisitedStates.append(state)
 
             n = random.randint(0, len(leastVisitedStates) - 1)
             nextState = leastVisitedStates[n]
             nextString = self.BWStateToString(nextState)
-            """
-            n = random.randint(0, len(listStates) - 1)
-            nextState = listStates[n]
-            nextString = self.BWStateToString(nextState)
-            #Comprovem si l'estat s'ha visitat
-            if nextString not in currentDict.keys():
-                currentDict[nextString] = 0
-            """
             return nextState, nextString
+            """
+
+
         #Fem exploració amb probabilitat 1 - epsilon
         else:
             listBestStates = []
-            maxValue = -10000
-            visitedStatesString = currentDict.keys()
-            error = 0.01
+            maxValue = float('-inf')
+            error = 0.5
+            #Un primer bucle per trobar el màxim valor
             for state in listStates:
                 stateString = self.BWStateToString(state)
                 #Si l'estat no ha estat visitat, l'inicialitzem
@@ -701,21 +710,25 @@ class Aichess():
                     currentDict[stateString] = 0
                     numVisitedTable[stateString] = 0
                 qValue = currentDict[stateString]
+
+                if qValue > maxValue:
+                    maxValue = qValue
+            #Un segnon bucle per trobar els millors estats
+            minFrequency = float('inf')
+            indexMinFrequency = 0
+            for state in listStates:
+                stateString = self.BWStateToString(state)
+                qValue = currentDict[stateString]
                 #Valorem si el valor es troba dins d'un marge d'error del major valor trobat
                 #En cas afirmatiu, l'afegim als millors estats possibles
                 if qValue <= maxValue + error and qValue >= maxValue - error:
-                    listBestStates.append(state)
-                #Si el valor está fora de rang i és major que el major valor trobat, passa a ser el valor
-                #màxim.
-                elif qValue > maxValue:
-                    maxValue = qValue
-                    listBestStates.clear()
-                    listBestStates.append(state)
+                    if numVisitedTable[stateString] < minFrequency:
+                        selectedState = state
+                        selectedString = stateString
+                        minFrequency = numVisitedTable[stateString]
 
-            n = random.randint(0, len(listBestStates) - 1)
-            nextState = listBestStates[n]
-            nextString = self.BWStateToString(nextState)
-            return nextState, nextString
+            return selectedState, selectedString
+        return
 
     def reconstructPathBW(self, initialState):
         currentState = initialState
@@ -856,7 +869,7 @@ class Aichess():
     def towersAlive(self, currentState):
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
 
-    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
+    def propagation2(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
         #Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
         #Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
         numMoves = len(listMovementsStrings)
@@ -878,7 +891,7 @@ class Aichess():
 
             qValue = currentDict[nextMoveString]
             recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation, prevMove)
-            recompensaAcumulada = recompensaP + gamma * (recompensaAcumulada)
+            recompensaAcumulada = recompensaP - gamma * (recompensaAcumulada)
             qValue = (1 - alpha) * qValue + alpha * recompensaAcumulada
             currentDict[nextMoveString] = qValue
             numVisitedTable[nextMoveString] += 1
@@ -887,7 +900,7 @@ class Aichess():
 
         return
 
-    def propagation2(self, listMovements, listMovementsStrings, alpha, gamma, torn):
+    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, torn):
         #Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
         #Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
         numMoves = len(listMovementsStrings)
@@ -918,6 +931,7 @@ class Aichess():
                     self.qTableBlacks[prevMoveString][nextMoveString] = qValue
                     self.numVisitedBlacks[prevMoveString][nextMoveString] += 1
                 tornPropagation = not tornPropagation
+        return
 
     def QlearningWhitesVsBlacks(self, alpha, gamma):
         torn = True
@@ -943,12 +957,13 @@ class Aichess():
         listMiddleStates = self.middleStatesList()
         middleExploration = False
 
-        loadQTable = False
+        loadQTable = True
         if loadQTable:
             checkMateExploration = False
             middleExploration = True
             self.loadQTable()
-            numIteracions = 0
+            numIteracions = 15500
+            indexList = 3
 
         #Només sortirem quan tinguem suficients camins convergents i estem a la configuració final.
         while numCaminsConvergents < 10 or checkMateExploration or middleExploration:
@@ -1140,9 +1155,232 @@ class Aichess():
                 else:
                     numCaminsConvergents = 0
 
+
+
+
+        self.reconstructPathBW(initialState)
+        return 0
+
+    def QlearningWhitesVsBlacksEpsilon(self, alpha, gamma, epsilon):
+        torn = True
+
+        initialState = self.getCurrentState()
+        initialString = self.BWStateToString(initialState)
+        currentState = initialState
+        currentString = initialString
+        # Restringim el número de moviments per cada partida.
+        numMaxMoviments = 20
+        numMaxMovimentsTowerDead = 80
+
+        error = 0.15
+        numIteracions = 0
+        numCaminsConvergents = 0
+        numCheckMates = 0
+        numIteracionsUltimate = 0
+
+        indexList = 0
+        listCheckMates = self.checkMateList()
+        checkMateExploration = True
+        listMiddleStates = self.middleStatesList()
+        middleExploration = False
+
+        loadQTable = False
+        if loadQTable:
+            checkMateExploration = False
+            middleExploration = True
+            self.loadQTable()
+            numIteracions = 0
+            indexList = 0
+
+        # Només sortirem quan tinguem suficients camins convergents i estem a la configuració final.
+        while numCaminsConvergents < 10 or checkMateExploration or middleExploration:
+            numIteracions += 1
+            finalState = False
+            numMovimentsBlanques = 0
+            numMovimentsNegres = 0
+            deltaBlanques = 0
+            deltaNegres = 0
+            comptMoviments = 0
+
+            if checkMateExploration:
+                numMaxMovimentsTowerDead = 25
+                if indexList == len(listCheckMates) - 1 and numCheckMates == 3:
+                    checkMateExploration = False
+                    middleExploration = True
+                    self.saveQTable()
+                    numCaminsConvergents = 0
+                    indexList = 0
+                else:
+                    if numCheckMates == 3:
+                        indexList += 1
+                        numCheckMates = 0
+                        print("\n")
+                        print("CHECKMATE INDEX", indexList)
+                        print("\n")
+                    currentState = listCheckMates[indexList]
+                    currentString = self.BWStateToString(currentState)
+                    self.newBoardSim(currentState)
+
+            if middleExploration:
+                numMaxMovimentsTowerDead = 60
+                if indexList == len(listMiddleStates) - 1 and numCaminsConvergents >= 10:
+                    numCaminsConvergents = 0
+                    middleExploration = False
+
+                    self.saveQTable()
+                else:
+                    if numCaminsConvergents >= 10:
+                        indexList += 1
+                        numCaminsConvergents = 0
+                        print("\n")
+                        print("MIDDLE INDEX", indexList)
+                        print("\n")
+                        self.saveQTable()
+                    currentState = listMiddleStates[indexList][0]
+                    numMaxMovimentsTowerDead = listMiddleStates[indexList][1]
+                    currentString = self.BWStateToString(currentState)
+                    self.newBoardSim(currentState)
+                if numIteracions % 500 == 0:
+                    self.saveQTable()
+
+            if not middleExploration and not checkMateExploration:
+                numMaxMovimentsTowerDead = 70
+                self.newBoardSim(initialState)
+                currentState, currentString = initialState, initialString
+                numIteracionsUltimate += 1
+
+                if numIteracionsUltimate > 35:
+                    print(self.qTableWhites[currentString])
+                    if '03x736072008' in self.qTableWhites[currentString].keys():
+                        print(self.qTableWhites[currentString]['03x736072008'])
+                        print(self.qTableBlacks['03x736072008'])
+                if numIteracions % 500 == 0:
+                    self.saveQTable()
+
+            torn = True
+
+            listMovements = [currentState]
+            listMovementsStrings = [currentString]
+
+            while not finalState:
+                if (comptMoviments >= numMaxMoviments and self.towersAlive(
+                        currentState)) or comptMoviments >= numMaxMovimentsTowerDead:
+                    break
+                if torn:
+                    # Si no hem visitat l'estat, l'afegim a la q-table
+                    if currentString not in self.qTableWhites.keys():
+                        self.qTableWhites[currentString] = {}
+                        self.numVisitedWhites[currentString] = {}
+
+                    listNextStates = self.getCompleteNextStates(torn, currentState)
+
+                    # Triem un dels estats mitjançant exploració o explotació.
+                    nextState, nextString = self.epsilonStateBW(epsilon, listNextStates, currentState, torn)
+                    listMovementsStrings.append(nextString)
+                    listMovements.append(nextState)
+
+                    qValue = self.qTableWhites[currentString][nextString]
+                    self.numVisitedWhites[currentString][nextString] += 1
+
+                    # Obtenim la recompensa associada a l'estat nextState, i si és un estat terminal
+                    recompensa, isFinalState = self.recompensaBW(nextState, torn, currentState)
+
+                    # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
+                    # Ja que és un estat terminal.
+                    if isFinalState:
+                        qValue = recompensa
+                    else:
+                        # Obtenim el valor de la sample i del Q-value
+                        sample = recompensa + gamma * (-1) * self.maxQValue(nextString, self.qTableBlacks)
+                        deltaBlanques += sample - qValue
+                        qValue = (1 - alpha) * qValue + alpha * sample
+                    # Actualitzem la taula
+                    self.qTableWhites[currentString][nextString] = qValue
+                    if not isFinalState:
+                        # Movem les fitxes a la posició actual
+                        self.newBoardSim(nextState)
+
+                        currentState, currentString = nextState, nextString
+                        numMovimentsBlanques += 1
+                    # En cas que sigui escac i mat, acabem aquesta iteració del Q-learning.
+                    else:
+                        # Movem les fitxes a la posició actual
+                        ############
+                        self.newBoardSim(nextState)
+                        ###########
+                        # Si s'ha produit checkmate, propaguem valor.
+                        if self.isWatchedBk(nextState):
+                            # Comptem els número de checkMates que s'han fet seguits.
+                            numCheckMates += 1
+                            print("\n\nCHECKMATE\n\n")
+                            self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
+                            ###########
+                            self.newBoardSim(nextState)
+                            ###########
+
+                        finalState = True
+
+                else:
+                    # Si no hem visitat l'estat, l'afegim a la q-table
+                    if currentString not in self.qTableBlacks.keys():
+                        self.qTableBlacks[currentString] = {}
+                        self.numVisitedBlacks[currentString] = {}
+
+                    listNextStates = self.getCompleteNextStates(torn, currentState)
+
+                    # Triem un dels estats mitjançant exploració o explotació.
+                    nextState, nextString = self.epsilonStateBW(epsilon, listNextStates, currentState, torn)
+
+                    listMovementsStrings.append(nextString)
+                    listMovements.append(nextState)
+
+                    qValue = self.qTableBlacks[currentString][nextString]
+                    self.numVisitedBlacks[currentString][nextString] += 1
+
+                    # Obtenim la recompensa associada a l'estat nextState i si és un estat terminal.
+                    recompensa, isFinalState = self.recompensaBW(nextState, torn, currentState)
+
+                    # Si tenim algun escac i mat, el Q-Value ja serà la pròpia recompensa
+                    # Ja que és un estat terminal.
+                    if isFinalState:
+                        qValue = recompensa
+                    else:
+                        # Obtenim el valor de la sample i del Q-value
+                        sample = recompensa + gamma * (-1) * self.maxQValue(nextString, self.qTableWhites)
+                        deltaNegres += sample - qValue
+                        qValue = (1 - alpha) * qValue + alpha * sample
+                    # Actualitzem la taula
+                    self.qTableBlacks[currentString][nextString] = qValue
+                    if not isFinalState:
+                        # Movem les fitxes a la posició actual
+                        self.newBoardSim(nextState)
+
+                        currentState, currentString = nextState, nextString
+                        numMovimentsNegres += 1
+                    # Les negres han matat la torre blanca.
+                    else:
+                        self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
+                        ##########
+                        self.newBoardSim(nextState)
+                        ##########
+                        finalState = True
+
+                torn = not torn
+                comptMoviments += 1
+
+            # Calculem la mitjana de la delta
+            if numMovimentsBlanques != 0 and numMovimentsNegres != 0:
+                mitjanaDeltaBlanques = deltaBlanques / numMovimentsBlanques
+                mitjanaDeltaNegres = deltaNegres / numMovimentsNegres
+                print(numIteracions, mitjanaDeltaBlanques, mitjanaDeltaNegres)
+                # Si està en l'interval (-error, error), vol dir que aquest camí ha convergit.
+                if mitjanaDeltaBlanques < error and mitjanaDeltaBlanques > -error and mitjanaDeltaNegres < error and mitjanaDeltaNegres > -error:
+                    numCaminsConvergents += 1
+                # Si no, reiniciem el comptador.
+                else:
+                    numCaminsConvergents = 0
+
             self.chess.boardSim.print_board()
-
-
 
         self.reconstructPathBW(initialState)
         return 0
@@ -1223,6 +1461,11 @@ if __name__ == "__main__":
     numExercici = 1
 
     #Configuració inicial del taulell
+    #TA[2][4] = 2
+    #TA[4][4] = 6
+    #TA[0][7] = 8
+    #TA[1][2] = 12
+
     TA[7][0] = 2
     TA[7][4] = 6
     TA[0][7] = 8
@@ -1237,10 +1480,10 @@ if __name__ == "__main__":
     aichess.chess.boardSim.print_board()
 
     #print(aichess.BWStateToString(aichess.getCurrentState()))
-    aichess.QlearningWhitesVsBlacks(0.1, 0.9)
+    aichess.QlearningWhitesVsBlacksEpsilon(0.3,0.1, 0.9)
     #aichess.Qlearning(0.3, 0.9, 0.1)
     #aichess.loadQTable()
-    #aichess.reconstructPathBW([[0, 2, 12], [1, 0, 2], [3, 4, 6]])
+    #aichess.reconstructPathBW([[1, 2, 12], [2, 4, 2], [4, 4, 6]])
 
 
 
