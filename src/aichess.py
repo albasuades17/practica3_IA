@@ -875,7 +875,7 @@ class Aichess():
                 tornPropagation = not tornPropagation
         return
 
-    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
+    def propagationUnaVegada(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
         # Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
         # Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
         numMoves = len(listMovementsStrings)
@@ -912,6 +912,45 @@ class Aichess():
 
         return
 
+    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
+        # Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
+        # Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
+        numMoves = len(listMovementsStrings)
+        recompensaAcumulada = 0
+        #Fem propagació una sola vegada per tot el camí. Començant pel penúltim estat fins el primer de tots.
+        for j in range(numMoves - 1, 0, -1):
+            prevMoveString = listMovementsStrings[j - 1]
+            nextMoveString = listMovementsStrings[j]
+            prevMove = listMovements[j - 1]
+            nextMove = listMovements[j]
+
+            if tornPropagation:
+                currentDict = self.qTableWhites[prevMoveString]
+                numVisitedTable = self.numVisitedWhites[prevMoveString]
+                rivalDict = self.qTableBlacks
+
+            # Si és el torn de les negres
+            else:
+                currentDict = self.qTableBlacks[prevMoveString]
+                numVisitedTable = self.numVisitedBlacks[prevMoveString]
+                rivalDict = self.qTableWhites
+
+
+            qValue = currentDict[nextMoveString]
+            recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation, prevMove)
+
+            recompensaAcumulada = recompensaP - gamma * (recompensaAcumulada)
+
+            if j != numMoves -1:
+                sample = recompensaAcumulada + gamma * (-1) * self.maxQValue(nextMoveString, rivalDict)
+                qValue = (1 - alpha) * qValue + alpha * sample
+
+                currentDict[nextMoveString] = qValue
+                numVisitedTable[nextMoveString] += 1
+
+            tornPropagation = not tornPropagation
+
+        return
 
     def QlearningWhitesVsBlacksExplorationFunction(self, alpha, gamma):
         #Aquest algorisme utilitza la funció d'exploració
