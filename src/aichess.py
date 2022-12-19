@@ -764,7 +764,7 @@ class Aichess():
             #Si el rei negre està en check mate
             if self.isWatchedBk(currentState):
                 #Retornem recompensa i com que és un estat terminal, True.
-                return 5000, True
+                return 400, True
             #Estem en empat
             else:
                 #Retornem recompensa i com que és un estat terminal, True.
@@ -774,7 +774,7 @@ class Aichess():
             # Si el rei blanc està en check mate
             if self.isWatchedWk(currentState):
                 # Retornem recompensa i com que és un estat terminal, True.
-                return 5000, True
+                return 400, True
             # Estem en empat
             else:
                 # Retornem recompensa i com que és un estat terminal, True.
@@ -842,7 +842,7 @@ class Aichess():
     def towersAlive(self, currentState):
         return self.getPieceState(currentState,2) != None and self.getPieceState(currentState,8) != None
 
-    def propagation2(self, listMovements, listMovementsStrings, alpha, gamma, torn):
+    def recursivePropagation(self, listMovements, listMovementsStrings, alpha, gamma, torn):
         #Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
         #Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
         numMoves = len(listMovementsStrings)
@@ -875,7 +875,7 @@ class Aichess():
                 tornPropagation = not tornPropagation
         return
 
-    def propagationUnaVegada(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
+    def linearPropagation(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
         # Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
         # Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
         numMoves = len(listMovementsStrings)
@@ -887,7 +887,7 @@ class Aichess():
             nextMoveString = listMovementsStrings[j]
             prevMove = listMovements[j - 1]
             nextMove = listMovements[j]
-
+            #Si és el torn de les blanques
             if tornPropagation:
                 currentDict = self.qTableWhites[prevMoveString]
                 numVisitedTable = self.numVisitedWhites[prevMoveString]
@@ -907,46 +907,6 @@ class Aichess():
 
             currentDict[nextMoveString] = qValue
             numVisitedTable[nextMoveString] += 1
-
-            tornPropagation = not tornPropagation
-
-        return
-
-    def propagation(self, listMovements, listMovementsStrings, alpha, gamma, tornPropagation):
-        # Utilitzem el mètode per propagar els valors d'un estat final en tot el camí recorregut.
-        # Això es fa quan les blanques fan un check mate o el rei negre mata a la torre blanca
-        numMoves = len(listMovementsStrings)
-        recompensaAcumulada = 0
-        #Fem propagació una sola vegada per tot el camí. Començant pel penúltim estat fins el primer de tots.
-        for j in range(numMoves - 1, 0, -1):
-            prevMoveString = listMovementsStrings[j - 1]
-            nextMoveString = listMovementsStrings[j]
-            prevMove = listMovements[j - 1]
-            nextMove = listMovements[j]
-
-            if tornPropagation:
-                currentDict = self.qTableWhites[prevMoveString]
-                numVisitedTable = self.numVisitedWhites[prevMoveString]
-                rivalDict = self.qTableBlacks
-
-            # Si és el torn de les negres
-            else:
-                currentDict = self.qTableBlacks[prevMoveString]
-                numVisitedTable = self.numVisitedBlacks[prevMoveString]
-                rivalDict = self.qTableWhites
-
-
-            qValue = currentDict[nextMoveString]
-            recompensaP, isFinalStateP = self.recompensaBW(nextMove, tornPropagation, prevMove)
-
-            recompensaAcumulada = recompensaP - gamma * (recompensaAcumulada)
-
-            if j != numMoves -1:
-                sample = recompensaAcumulada + gamma * (-1) * self.maxQValue(nextMoveString, rivalDict)
-                qValue = (1 - alpha) * qValue + alpha * sample
-
-                currentDict[nextMoveString] = qValue
-                numVisitedTable[nextMoveString] += 1
 
             tornPropagation = not tornPropagation
 
@@ -1105,7 +1065,7 @@ class Aichess():
                             #Comptem els número de checkMates que s'han fet seguits.
                             numCheckMates +=1
                             print("\n\nCHECKMATE\n\n")
-                            self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
+                            self.linearPropagation(listMovements, listMovementsStrings, alpha, gamma, torn)
                             ###########
                             self.newBoardSim(nextState)
                             ###########
@@ -1154,7 +1114,7 @@ class Aichess():
                         numMovimentsNegres += 1
                     #Les negres han matat la torre blanca.
                     else:
-                        self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
+                        self.linearPropagation(listMovements, listMovementsStrings, alpha, gamma, torn)
                         ##########
                         self.newBoardSim(nextState)
                         ##########
@@ -1182,8 +1142,6 @@ class Aichess():
         return 0
 
     def QlearningWhitesVsBlacksEpsilon(self, alpha, gamma, epsilon):
-        torn = True
-
         initialState = self.getCurrentState()
         initialString = self.BWStateToString(initialState)
         currentState = initialState
@@ -1218,8 +1176,8 @@ class Aichess():
             checkMateExploration = False
             middleExploration = True
             self.loadQTable()
-            #numIteracions = 28000
-            #indexList = 2
+            #numIteracions = 0
+            #indexList = 0
 
         # Només sortirem quan tinguem suficients camins convergents i estem a la configuració final.
         while numCaminsConvergents < 10 or checkMateExploration or middleExploration:
@@ -1335,7 +1293,7 @@ class Aichess():
                         if self.isWatchedBk(nextState):
                             # Comptem els número de checkMates que s'han fet seguits.
                             numCheckMates += 1
-                            self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
+                            self.linearPropagation(listMovements, listMovementsStrings, alpha, gamma, torn)
                         #Indiquem que s'acaba la partida
                         finalState = True
                 #Ara és el torn de les negres
@@ -1379,7 +1337,7 @@ class Aichess():
                     # Les negres han matat la torre blanca.
                     else:
                         #Fem propagació del valor i indiquem que s'ha acabat la partida
-                        self.propagation(listMovements, listMovementsStrings, alpha, gamma, torn)
+                        self.linearPropagation(listMovements, listMovementsStrings, alpha, gamma, torn)
                         finalState = True
 
                 torn = not torn
@@ -1402,7 +1360,7 @@ class Aichess():
         return 0
 
     def loadQTable(self):
-        #Recuperem els fitxers i guardem l'informació en les taules utilitzades.
+        #Recuperem els fitxers i guardem la informació en les taules utilitzades.
         kValueEValue = 'K'+str(self.kValue) +'E'+ str(self.errorValue)
         with open('qTableWhites'+kValueEValue+'.txt') as fW:
             dataW = fW.read()
